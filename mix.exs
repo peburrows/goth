@@ -29,6 +29,7 @@ defmodule GoogleAuth.Mixfile do
   defp deps do
     [{:json_web_token, "~> 0.2", github: "peburrows/json_web_token_ex", branch: "update-poison"},
      {:httpoison, "~> 0.8.0"},
-     {:poison, "~> 2.0"}]
+     {:poison, "~> 2.0"},
+     {:bypass, "~> 0.1", only: :test}]
   end
 end
