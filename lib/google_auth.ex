@@ -1,0 +1,2 @@
+defmodule GoogleAuth do
+end

@@ -1,0 +1,8 @@
+%{"certifi": {:hex, :certifi, "0.3.0"},
+  "hackney": {:hex, :hackney, "1.4.8"},
+  "httpoison": {:hex, :httpoison, "0.8.1"},
+  "idna": {:hex, :idna, "1.0.3"},
+  "json_web_token": {:git, "https://github.com/peburrows/json_web_token_ex.git", "ee1e89e325e9050f41e01c561d00ffb9147cad4b", [branch: "update-poison"]},
+  "mimerl": {:hex, :mimerl, "1.0.2"},
+  "poison": {:hex, :poison, "2.0.0"},
+  "ssl_verify_hostname": {:hex, :ssl_verify_hostname, "1.0.5"}}
