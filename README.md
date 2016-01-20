@@ -32,3 +32,7 @@ config :google_auth,
 # do something with that client later
 HTTPoison.get(path, [{"Authorization", "Bearer #{token}"}])
 ``` -->
+
+Eventually, the first time you get an access token, you could tell the application to keep it fresh,
+in which case it would sleep in the background until the token has almost expired and grab a new one
+right before it does.

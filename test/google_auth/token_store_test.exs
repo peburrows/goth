@@ -1,11 +1,12 @@
 defmodule GoogleAuth.TokenStoreTest do
   use ExUnit.Case
   alias GoogleAuth.TokenStore
+  alias GoogleAuth.Token
 
   test "we can store an access token" do
-    TokenStore.store("devstorage.readonly, prediction", "123", "Bearer", 100)
-    {:ok, %{key: key, type: type, expires: exp}} = TokenStore.find("prediction")
-    assert {"123", "Bearer"} = {key, type}
-    assert exp <= 100
+    TokenStore.store("devstorage.readonly, prediction", %Token{token: "123", type: "Bearer", expires: 100})
+    {:ok, token} = TokenStore.find("devstorage.readonly, prediction")
+    assert %Token{token: "123", type: "Bearer"} = token
+    assert token.expires <= 100
   end
 end
