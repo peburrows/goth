@@ -4,7 +4,7 @@
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed as:
+<!-- If [available in Hex](https://hex.pm/docs/publish), the package can be installed as:
 
   1. Add google_auth to your list of dependencies in `mix.exs`:
 
@@ -31,4 +31,4 @@ config :google_auth,
 {:ok, token} = GoogleAuth.get_token(scope: "pubsub")
 # do something with that client later
 HTTPoison.get(path, [{"Authorization", "Bearer #{token}"}])
-```
+``` -->
