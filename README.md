@@ -1,6 +1,6 @@
 # GoogleAuth
 
-**TODO: Add description**
+A simple library to generate and retrieve Oauth2 tokens for use with Google Cloud Service accounts.
 
 ## Installation
 
