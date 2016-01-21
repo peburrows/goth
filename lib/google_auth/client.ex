@@ -3,12 +3,14 @@ defmodule GoogleAuth.Client do
   alias GoogleAuth.Token
 
   def get_access_token(scope) do
-    # we should check the config for this, honestly...
     endpoint = Application.get_env(:google_auth, :endpoint, "https://www.googleapis.com")
 
-    {:ok, response} = HTTPoison.post(Path.join([endpoint, "/oauth2/v4/token"]), jwt(scope), [
-      {"Content-Type", "application/x-www-form-urlencoded"}
-    ])
+    {:ok, response} = HTTPoison.post( Path.join([endpoint, "/oauth2/v4/token"]),
+                                      {:form, [grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+                                               assertion:  jwt(scope)]
+                                      },
+                                      [ {"Content-Type", "application/x-www-form-urlencoded"} ]
+                                    )
 
     {:ok, Token.from_response_json(response.body)}
   end
@@ -28,13 +30,11 @@ defmodule GoogleAuth.Client do
   def json(scope), do: json(scope, :os.system_time(:seconds))
   def json(scope, iat), do: claims(scope, iat) |> Poison.encode!
 
-  defp jwt(scope), do: jwt(scope, :os.system_time(:seconds))
-  defp jwt(scope, iat) do
+  def jwt(scope), do: jwt(scope, :os.system_time(:seconds))
+  def jwt(scope, iat) do
     {:ok, key} = Config.get(:private_key)
     scope
     |> claims
-    |> JsonWebToken.sign(%{
-                           alg: "RS256",
-                           key: JsonWebToken.Algorithm.RsaUtil.private_key(key)})
+    |> JsonWebToken.sign(%{alg: "RS256", key: JsonWebToken.Algorithm.RsaUtil.private_key(key)})
   end
 end
