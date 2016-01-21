@@ -16,12 +16,13 @@ defmodule GoogleAuth.Token do
   def for_scope(scope) do
     case TokenStore.find(scope) do
       :error       -> retrieve_and_store!(scope)
-      {:ok, token} -> token
+      {:ok, token} -> {:ok, token}
     end
   end
 
   defp retrieve_and_store!(scope) do
     {:ok, token} = Client.get_access_token(scope)
     TokenStore.store(scope, token)
+    {:ok, token}
   end
 end

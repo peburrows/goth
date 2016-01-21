@@ -44,7 +44,7 @@ defmodule GoogleAuth.ClientTest do
 
       assert_body_is_legit_jwt(conn, scope)
 
-      Plug.Conn.resp(conn, 200, Poison.encode!(token_response))
+      Plug.Conn.resp(conn, 201, Poison.encode!(token_response))
     end
 
     {:ok, data} = Client.get_access_token(scope)
@@ -55,8 +55,7 @@ defmodule GoogleAuth.ClientTest do
   end
 
   defp assert_body_is_legit_jwt(conn, scope) do
-    {:ok, key} = GoogleAuth.Config.get(:private_key)
-    {:ok, body, conn} = Plug.Conn.read_body(conn)
+    {:ok, body, _conn} = Plug.Conn.read_body(conn)
     assert String.length(body) > 0
 
     [_header, claims, _sign] = String.split(body, ".")
