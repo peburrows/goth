@@ -9,7 +9,7 @@ defmodule GoogleAuth.Token do
     %__MODULE__{
       token:   attrs["access_token"],
       type:    attrs["token_type"],
-      expires: attrs["expires_in"]
+      expires: :os.system_time(:seconds) + attrs["expires_in"]
     }
   end
 

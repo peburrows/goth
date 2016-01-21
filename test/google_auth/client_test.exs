@@ -49,9 +49,10 @@ defmodule GoogleAuth.ClientTest do
 
     {:ok, data} = Client.get_access_token(scope)
 
-    token = %Token{token: token_response["access_token"], type: token_response["token_type"], expires: token_response["expires_in"]}
-
-    assert ^token = data
+    at = token_response["access_token"]
+    tt = token_response["token_type"]
+    
+    assert %Token{token: ^at, type: ^tt, expires: _exp} = data
   end
 
   defp assert_body_is_legit_jwt(conn, scope) do
