@@ -4,35 +4,37 @@
 
 ## Installation
 
-<!-- If [available in Hex](https://hex.pm/docs/publish), the package can be installed as:
-
-  1. Add google_auth to your list of dependencies in `mix.exs`:
-
-        def deps do
-          [{:google_auth, "~> 0.0.1"}]
-        end
-
-  2. Ensure google_auth is started before your application:
-
-        def application do
-          [applications: [:google_auth]]
-        end
-
+1. Add google_auth to your list of dependencies in `mix.exs`:
 ```elixir
-# Here's how I want this to go:
+def deps do
+  [{:google_auth, "~> 0.0.1"}]
+end
+```
 
-# give GoogleAuth your RSA key
+2. Ensure google_auth is started before your application:
+```elixir
+def application do
+  [applications: [:google_auth]]
+end
+```
+
+3. Pass in your credentials json downloaded from your GCE account:
+```elixir
 config :google_auth,
-  keyfile: "path/to/my/key",
-  key: "raw-key-string",
-  json: "path/to/google/json/creds.json"
+  json: "path/to/google/json/creds.json" |> File.read!
+```
 
-# retrieve an access token (from Google, or from the GenServer)
-{:ok, token} = GoogleAuth.get_token(scope: "pubsub")
-# do something with that client later
-HTTPoison.get(path, [{"Authorization", "Bearer #{token}"}])
-``` -->
+## Usage
 
-Eventually, the first time you get an access token, you could tell the application to keep it fresh,
-in which case it would sleep in the background until the token has almost expired and grab a new one
-right before it does.
+### Retrieve a token:
+Call `Token.for_scope/1` passing in a string of scopes, separated by a comma:
+```elixir
+alias GoogleAuth.Token
+{:ok, token} = Token.for_scope("https://www.googleapis.com/auth/pubsub")
+#=>
+  %GoogleAuth.Token{
+    expires: 1453356568,
+    token: "ya29.cALlJ4ICWRvMkYB-WsAR-CZnExE459PA7QPqKg5nei9y2T9-iqmbcgxq8XrTATNn_BPim",
+    type: "Bearer"
+  }
+```
