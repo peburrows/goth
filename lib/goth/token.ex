@@ -8,6 +8,12 @@ defmodule Goth.Token do
   alias Goth.TokenStore
   alias Goth.Client
 
+  @type token :: %__MODULE__{
+                    token: String.t,
+                    type:  String.t,
+                    expires: non_neg_integer
+                  }
+
   defstruct [:token, :type, :expires]
 
   @doc """
@@ -15,9 +21,10 @@ defmodule Goth.Token do
   scope or multiple scopes joined by a comma.
 
   ## Example
-  iex> Token.for_scope("https://www.googleapis.com/auth/pubsub")
-  {:ok, %Goth.Token{expires: ..., token: "...", type: "..."} }
+      iex> Token.for_scope("https://www.googleapis.com/auth/pubsub")
+      {:ok, %Goth.Token{expires: ..., token: "...", type: "..."} }
   """
+  @spec for_scope(String.t) :: {:ok, token} | :error
   def for_scope(scope) do
     case TokenStore.find(scope) do
       :error       -> retrieve_and_store!(scope)
