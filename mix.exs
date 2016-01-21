@@ -4,6 +4,8 @@ defmodule Goth.Mixfile do
   def project do
     [app: :goth,
      version: "0.0.1",
+     description: description,
+     package: package,
      elixir: "~> 1.2",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
@@ -30,10 +32,24 @@ defmodule Goth.Mixfile do
   #
   # Type "mix help deps" for more examples and options
   defp deps do
-    [{:json_web_token, "~> 0.2", github: "garyf/json_web_token_ex"},
+    [{:json_web_token, "~> 0.2.4"},
      {:httpoison, "~> 0.8.0"},
-     {:poison, "~> 2.0.0"},
+     {:poison, "~> 1.5.2"},
      {:bypass, "~> 0.1", only: :test},
      {:mix_test_watch, "~> 0.2.5", only: :dev}]
+  end
+
+  defp description do
+    """
+    A simple library to generate and retrieve Oauth2 tokens for use with Google Cloud Service accounts.
+    """
+  end
+
+  defp package do
+    [
+      maintainers: ["Phil Burrows"],
+      licenses: ["MIT"],
+      links: %{"GitHub" => "https://github.com/peburrows/goth"}
+    ]
   end
 end
