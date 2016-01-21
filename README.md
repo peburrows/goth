@@ -5,24 +5,24 @@
 ## Installation
 
 1. Add google_auth to your list of dependencies in `mix.exs`:
-```elixir
-def deps do
-  [{:google_auth, "~> 0.0.1"}]
-end
-```
+  ```elixir
+  def deps do
+    [{:google_auth, "~> 0.0.1"}]
+  end
+  ```
 
 2. Ensure google_auth is started before your application:
-```elixir
-def application do
-  [applications: [:google_auth]]
-end
-```
+  ```elixir
+  def application do
+    [applications: [:google_auth]]
+  end
+  ```
 
 3. Pass in your credentials json downloaded from your GCE account:
-```elixir
-config :google_auth,
-  json: "path/to/google/json/creds.json" |> File.read!
-```
+  ```elixir
+  config :google_auth,
+    json: "path/to/google/json/creds.json" |> File.read!
+  ```
 
 ## Usage
 
