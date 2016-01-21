@@ -1,8 +1,8 @@
-defmodule GoogleAuth.Mixfile do
+defmodule Goth.Mixfile do
   use Mix.Project
 
   def project do
-    [app: :google_auth,
+    [app: :goth,
      version: "0.0.1",
      elixir: "~> 1.2",
      build_embedded: Mix.env == :prod,
@@ -15,7 +15,7 @@ defmodule GoogleAuth.Mixfile do
   # Type "mix help compile.app" for more information
   def application do
     [
-      mod: {GoogleAuth, []},
+      mod: {Goth, []},
       applications: [:logger, :httpoison]
     ]
   end

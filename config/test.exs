@@ -1,4 +1,4 @@
 use Mix.Config
 
-config :google_auth,
+config :goth,
   json: "config/test-credentials.json" |> Path.expand |> File.read!

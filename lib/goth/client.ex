@@ -1,9 +1,9 @@
-defmodule GoogleAuth.Client do
-  alias GoogleAuth.Config
-  alias GoogleAuth.Token
+defmodule Goth.Client do
+  alias Goth.Config
+  alias Goth.Token
 
   def get_access_token(scope) do
-    endpoint = Application.get_env(:google_auth, :endpoint, "https://www.googleapis.com")
+    endpoint = Application.get_env(:goth, :endpoint, "https://www.googleapis.com")
 
     {:ok, response} = HTTPoison.post( Path.join([endpoint, "/oauth2/v4/token"]),
                                       {:form, [grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",

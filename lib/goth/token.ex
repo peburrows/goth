@@ -1,6 +1,6 @@
-defmodule GoogleAuth.Token do
-  alias GoogleAuth.TokenStore
-  alias GoogleAuth.Client
+defmodule Goth.Token do
+  alias Goth.TokenStore
+  alias Goth.Client
 
   defstruct [:token, :type, :expires]
 

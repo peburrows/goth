@@ -1,7 +1,7 @@
-defmodule GoogleAuth.TokenStoreTest do
+defmodule Goth.TokenStoreTest do
   use ExUnit.Case
-  alias GoogleAuth.TokenStore
-  alias GoogleAuth.Token
+  alias Goth.TokenStore
+  alias Goth.Token
 
   test "we can store an access token" do
     TokenStore.store("devstorage.readonly, prediction", %Token{token: "123", type: "Bearer", expires: 100})

@@ -1,6 +1,6 @@
-defmodule GoogleAuth.TokenStore do
+defmodule Goth.TokenStore do
   use GenServer
-  alias GoogleAuth.Token
+  alias Goth.Token
 
   def start_link do
     GenServer.start_link(__MODULE__, %{}, [name: __MODULE__])

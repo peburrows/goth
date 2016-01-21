@@ -1,10 +1,10 @@
-defmodule GoogleAuth.TokenTest do
+defmodule Goth.TokenTest do
   use ExUnit.Case
-  alias GoogleAuth.Token
+  alias Goth.Token
 
   setup do
     bypass = Bypass.open
-    Application.put_env(:google_auth, :endpoint, "http://localhost:#{bypass.port}")
+    Application.put_env(:goth, :endpoint, "http://localhost:#{bypass.port}")
     {:ok, bypass: bypass}
   end
 

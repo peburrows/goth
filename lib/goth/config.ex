@@ -1,8 +1,8 @@
-defmodule GoogleAuth.Config do
+defmodule Goth.Config do
   use GenServer
 
-  @json   Application.get_env(:google_auth, :json)
-  @config Application.get_env(:google_auth, :config, %{})
+  @json   Application.get_env(:goth, :json)
+  @config Application.get_env(:goth, :config, %{})
 
   def start_link do
     GenServer.start_link(__MODULE__, :ok, [name: __MODULE__])

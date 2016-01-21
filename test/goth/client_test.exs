@@ -1,16 +1,16 @@
-defmodule GoogleAuth.ClientTest do
+defmodule Goth.ClientTest do
   use ExUnit.Case
-  alias GoogleAuth.Client
-  alias GoogleAuth.Token
+  alias Goth.Client
+  alias Goth.Token
 
   setup do
     bypass = Bypass.open
-    Application.put_env(:google_auth, :endpoint, "http://localhost:#{bypass.port}")
+    Application.put_env(:goth, :endpoint, "http://localhost:#{bypass.port}")
     {:ok, bypass: bypass}
   end
 
   test "we include all necessary attributes in the JWT" do
-    {:ok, email} = GoogleAuth.Config.get(:client_email)
+    {:ok, email} = Goth.Config.get(:client_email)
     iat = :os.system_time(:seconds)
     exp = iat+10
     scope = "prediction"

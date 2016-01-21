@@ -1,6 +1,6 @@
-defmodule GoogleAuth.ConfigTest do
+defmodule Goth.ConfigTest do
   use ExUnit.Case
-  alias GoogleAuth.Config
+  alias Goth.Config
 
   test "setting and retrieving value" do
     Config.set(:key, "123")

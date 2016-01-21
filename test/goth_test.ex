@@ -1,4 +1,4 @@
-defmodule GoogleAuthTest do
+defmodule GothTest do
   use ExUnit.Case
-  doctest GoogleAuth
+  doctest Goth
 end
