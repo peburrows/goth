@@ -16,7 +16,7 @@ defmodule Goth.TokenStoreTest do
     assert token.expires > :os.system_time(:seconds) + 900
   end
 
-  test "a token is queued for refresh when stored", %{bypass: bypass} do
+  test "a token is queued for refresh when stored" do
     token = %Token{scope: "will-be-stale", token: "stale", type: "Bearer", expires: :os.system_time(:seconds)+1000}
 
     # if queued for later, we'll get back a reference

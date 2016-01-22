@@ -10,8 +10,8 @@ defmodule Goth.Config do
 
   def init(:ok) do
     case @json do
-      nil    -> {:ok, @config}
-      string -> {:ok, Poison.decode!(@json)}
+      nil -> {:ok, @config}
+      _   -> {:ok, Poison.decode!(@json)}
     end
   end
 
