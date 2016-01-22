@@ -6,7 +6,7 @@ defmodule Goth.TokenStore do
     GenServer.start_link(__MODULE__, %{}, [name: __MODULE__])
   end
 
-  # we nee to store the actual expiration timestamp at some point
+  def store(%Token{}=token), do: store(token.scope, token)
   def store(scopes, %Token{} = token) do
     GenServer.call(__MODULE__, {:store, scopes, token})
   end
@@ -16,8 +16,9 @@ defmodule Goth.TokenStore do
   end
 
   # when we store a token, we should refresh it later
-  def handle_call({:store, scope, value}, _from, state) do
-    {:reply, :ok, Map.put(state, scope, value)}
+  def handle_call({:store, scope, token}, _from, state) do
+    pid_or_timer = Token.queue_for_refresh(token)
+    {:reply, pid_or_timer, Map.put(state, scope, token)}
   end
 
   def handle_call({:find, scope}, _from, state) do

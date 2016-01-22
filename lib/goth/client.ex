@@ -34,7 +34,7 @@ defmodule Goth.Client do
   def jwt(scope, iat) do
     {:ok, key} = Config.get(:private_key)
     scope
-    |> claims
+    |> claims(iat)
     |> JsonWebToken.sign(%{alg: "RS256", key: JsonWebToken.Algorithm.RsaUtil.private_key(key)})
   end
 end

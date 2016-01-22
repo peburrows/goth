@@ -50,6 +50,18 @@ defmodule Goth.Token do
   def refresh!(%__MODULE__{scope: scope}), do: refresh!(scope)
   def refresh!(scope), do: retrieve_and_store!(scope)
 
+  def queue_for_refresh(%__MODULE__{}=token) do
+    diff = token.expires - :os.system_time(:seconds)
+    if diff < 10 do
+      # just do it immediately
+      Task.async fn ->
+        __MODULE__.refresh!(token)
+      end
+    else
+      :timer.apply_after((diff-10)*1000, __MODULE__, :refresh!, [token])
+    end
+  end
+
   defp retrieve_and_store!(scope) do
     {:ok, token} = Client.get_access_token(scope)
     TokenStore.store(scope, token)
