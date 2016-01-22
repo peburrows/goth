@@ -5,14 +5,14 @@ A simple library to generate and retrieve Oauth2 tokens for use with Google Clou
 
 ## Installation
 
-1. Add google_auth to your list of dependencies in `mix.exs`:
+1. Add Goth to your list of dependencies in `mix.exs`:
   ```elixir
   def deps do
     [{:goth, "~> 0.0.1"}]
   end
   ```
 
-2. Ensure google_auth is started before your application:
+2. Ensure Goth is started before your application:
   ```elixir
   def application do
     [applications: [:goth]]
