@@ -1,17 +1,14 @@
 defmodule Goth.Config do
   use GenServer
 
-  @json   Application.get_env(:goth, :json)
-  @config Application.get_env(:goth, :config, %{})
-
   def start_link do
     GenServer.start_link(__MODULE__, :ok, [name: __MODULE__])
   end
 
   def init(:ok) do
-    case @json do
-      nil -> {:ok, @config}
-      _   -> {:ok, Poison.decode!(@json)}
+    case Application.get_env(:goth, :json) do
+      nil  -> {:ok, Application.get_env(:goth, :config, %{})}
+      json -> {:ok, Poison.decode!(json)}
     end
   end
 
