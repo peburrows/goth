@@ -12,7 +12,7 @@ defmodule Goth.Client do
                                       [ {"Content-Type", "application/x-www-form-urlencoded"} ]
                                     )
 
-    {:ok, Token.from_response_json(response.body)}
+    {:ok, Token.from_response_json(scope, response.body)}
   end
 
   def claims(scope), do: claims(scope, :os.system_time(:seconds))

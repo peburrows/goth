@@ -11,10 +11,11 @@ defmodule Goth.Token do
   @type token :: %__MODULE__{
                     token: String.t,
                     type:  String.t,
+                    scope: String.t,
                     expires: non_neg_integer
                   }
 
-  defstruct [:token, :type, :expires]
+  defstruct [:token, :type, :scope, :expires]
 
   @doc """
   Get a `%Goth.Token{}` for a particular `scope`. `scope` can be a single
@@ -36,14 +37,18 @@ defmodule Goth.Token do
   Parse a successful JSON response from Google's token API and extract a `%Goth.Token{}`
   """
 
-  def from_response_json(json) do
+  def from_response_json(scope, json) do
     {:ok, attrs} = json |> Poison.decode
     %__MODULE__{
       token:   attrs["access_token"],
       type:    attrs["token_type"],
+      scope:   scope,
       expires: :os.system_time(:seconds) + attrs["expires_in"]
     }
   end
+
+  def refresh!(%__MODULE__{scope: scope}), do: refresh!(scope)
+  def refresh!(scope), do: retrieve_and_store!(scope)
 
   defp retrieve_and_store!(scope) do
     {:ok, token} = Client.get_access_token(scope)

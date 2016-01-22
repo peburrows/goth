@@ -15,6 +15,7 @@ defmodule Goth.TokenStore do
     GenServer.call(__MODULE__, {:find, scope})
   end
 
+  # when we store a token, we should refresh it later
   def handle_call({:store, scope, value}, _from, state) do
     {:reply, :ok, Map.put(state, scope, value)}
   end
