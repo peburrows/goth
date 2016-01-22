@@ -1,4 +1,8 @@
 use Mix.Config
 
-config :goth,
-  json: "config/dev-credentials.json" |> Path.expand |> File.read!
+try do
+  config :goth,
+    json: "config/dev-credentials.json" |> Path.expand |> File.read!
+rescue
+  _ -> :ok
+end
