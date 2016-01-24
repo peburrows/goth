@@ -1,5 +1,5 @@
 defmodule Goth.Token do
-  @moduledoc """
+  @moduledoc ~S"""
   Interface for retrieving access tokens, from either the `Goth.TokenStore`
   or the Google token API. The first request for a token will hit the API,
   but subsequent requests will retrieve the token from Goth's token store.
@@ -24,7 +24,7 @@ defmodule Goth.Token do
   [HTTPoison](https://hex.pm/packages/httpoison):
 
       {:ok, token} = Goth.Token.for_scope("https://www.googleapis.com/auth/pubsub")
-      HTTPoison.get(url, [{"Authorization", "\#{token.type} \#{token.token}"}])
+      HTTPoison.get(url, [{"Authorization", "#{token.type} #{token.token}"}])
   """
 
   alias Goth.TokenStore

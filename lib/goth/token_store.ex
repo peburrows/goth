@@ -14,11 +14,27 @@ defmodule Goth.TokenStore do
     GenServer.start_link(__MODULE__, %{}, [name: __MODULE__])
   end
 
+  @doc ~S"""
+  Store a token in the `TokenStore`. Upon storage, Goth will queue the token
+  to be refreshed ten seconds before its expiration.
+  """
+  @spec store(Token.t) :: pid
   def store(%Token{}=token), do: store(token.scope, token)
   def store(scopes, %Token{} = token) do
     GenServer.call(__MODULE__, {:store, scopes, token})
   end
 
+  @doc ~S"""
+  Retrieve a token from the `TokenStore`.
+
+      token = %Goth.Token{type:    "Bearer",
+                          token:   "123",
+                          scope:   "scope",
+                          expires: :os.system_time(:seconds) + 3600}
+      Goth.TokenStore.store(token)
+      {:ok, ^token} = Goth.TokenStore.find(token.scope)
+  """
+  @spec find(String.t) :: {:ok, Token.t} | :error
   def find(scope) do
     GenServer.call(__MODULE__, {:find, scope})
   end
