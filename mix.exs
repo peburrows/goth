@@ -32,11 +32,11 @@ defmodule Goth.Mixfile do
   #
   # Type "mix help deps" for more examples and options
   defp deps do
-    [{:json_web_token, "~> 0.2.4"},
+    [{:json_web_token, "~> 0.2.4", github: "garyf/json_web_token_ex"},
      {:httpoison, "~> 0.8.0"},
-     {:poison, "~> 1.5.2"},
+     {:poison, "~> 1.5 or ~> 2.1.0"},
      {:bypass, "~> 0.1", only: :test},
-     {:mix_test_watch, "~> 0.2.5", only: :dev},
+     {:mix_test_watch, "~> 0.2", only: :dev},
      {:ex_doc, "~> 0.11.3", only: [:dev]},
      {:earmark, "~> 0.2", only: [:dev]}]
   end
