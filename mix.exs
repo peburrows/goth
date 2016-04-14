@@ -3,7 +3,7 @@ defmodule Goth.Mixfile do
 
   def project do
     [app: :goth,
-     version: "0.1.0",
+     version: "0.1.1",
      description: description,
      package: package,
      elixir: "~> 1.2",
@@ -32,10 +32,9 @@ defmodule Goth.Mixfile do
   #
   # Type "mix help deps" for more examples and options
   defp deps do
-    [{:json_web_token, "~> 0.2.4"},
+    [{:json_web_token, "~> 0.2.5"},
      {:httpoison, "~> 0.8.0"},
-    #  {:poison, "~> 1.5 or ~> 2.1.0"},
-     {:poison, "~> 1.5.2"},
+     {:poison, "~> 2.1"},
      {:bypass, "~> 0.1", only: :test},
      {:mix_test_watch, "~> 0.2", only: :dev},
      {:ex_doc, "~> 0.11.3", only: [:dev]},
