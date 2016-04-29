@@ -18,7 +18,7 @@ defmodule Goth.Mixfile do
   def application do
     [
       mod: {Goth, []},
-      applications: [:logger, :httpoison]
+      applications: [:json_web_token, :logger, :httpoison]
     ]
   end
 
