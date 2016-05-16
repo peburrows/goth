@@ -47,6 +47,14 @@ defmodule Goth.TokenStore do
   end
 
   def handle_call({:find, scope}, _from, state) do
-    {:reply, Map.fetch(state, scope), state}
+    Map.fetch(state, scope) |>
+      filter_expired(:os.system_time(:seconds)) |>
+      reply(state, scope)
   end
+
+  defp filter_expired(:error, _), do: :error
+  defp filter_expired({:ok, %Goth.Token{expires: expires}}, system_time) when expires < system_time, do: :error
+  defp filter_expired(value, _), do: value
+  defp reply(:error, state, scope), do: {:reply, :error, Map.delete(state, scope)}
+  defp reply(value, state, _scope), do: {:reply, value, state}
 end

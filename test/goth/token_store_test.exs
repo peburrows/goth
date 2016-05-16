@@ -35,4 +35,12 @@ defmodule Goth.TokenStoreTest do
     assert_receive {:DOWN, ^ref, :process, _, :normal}, 1000
     assert {:ok, %Token{token: "fresh"}} = TokenStore.find("refresh-me")
   end
+
+  # Edge case, should be refreshed automatically but on dev machines
+  # which go to sleep, it is not always happeneing
+  test "find never returns stale tokens", %{bypass: bypass} do
+    token = %Token{scope: "expired", token: "stale", type: "Bearer", expires: 1}
+    {:ok, pid} = GenServer.start_link(Goth.TokenStore,%{"expired" => token})
+    assert :error = TokenStore.find("expired")
+  end
 end
