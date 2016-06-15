@@ -41,7 +41,7 @@ defmodule Goth.Token do
 
   @doc """
   Get a `%Goth.Token{}` for a particular `scope`. `scope` can be a single
-  scope or multiple scopes joined by a comma.
+  scope or multiple scopes joined by a space.
 
   ## Example
       iex> Token.for_scope("https://www.googleapis.com/auth/pubsub")
