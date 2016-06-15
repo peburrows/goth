@@ -43,45 +43,53 @@ defmodule Goth.Client do
   end
 
   # Fetch an access token from Google's OAuth service using a JWT
-  def get_access_token(:oauth, scope) do
+  def get_access_token(:oauth, scope), do: get_access_token(:oauth, scope, nil)
+  def get_access_token(:oauth, scope, sub) do
     endpoint = Application.get_env(:goth, :endpoint, "https://www.googleapis.com")
     url      = "#{endpoint}/oauth2/v4/token"
     body     = {:form, [grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-                        assertion:  jwt(scope)]}
+                        assertion:  jwt(scope, sub)]}
     headers  = [{"Content-Type", "application/x-www-form-urlencoded"}]
 
     {:ok, response} = HTTPoison.post(url, body, headers)
     if response.status_code >= 200 && response.status_code < 300 do
-      {:ok, Token.from_response_json(scope, response.body)}
+      {:ok, Token.from_response_json(scope, sub, response.body)}
     else
       {:error, "Could not retrieve token, response: #{response.body}"}
     end
   end
 
-  def claims(scope), do: claims(scope, :os.system_time(:seconds))
-  def claims(scope, iat) do
+  def claims(scope, sub), do: claims(scope, sub, :os.system_time(:seconds))
+  def claims(scope, sub, iat) do
     {:ok, email} = Config.get(:client_email)
-    %{
+
+    claims = %{
       "iss"   => email,
       "scope" => scope,
       "aud"   => "https://www.googleapis.com/oauth2/v4/token",
       "iat"   => iat,
       "exp"   => iat+10
     }
+
+    if sub do
+      Map.put(claims, "sub", sub)
+    else
+      claims
+    end
   end
 
-  def json(scope), do: json(scope, :os.system_time(:seconds))
-  def json(scope, iat) do
+  def json(scope, sub), do: json(scope, sub, :os.system_time(:seconds))
+  def json(scope, sub, iat) do
     scope
-    |> claims(iat)
+    |> claims(sub, iat)
     |> Poison.encode!
   end
 
-  def jwt(scope), do: jwt(scope, :os.system_time(:seconds))
-  def jwt(scope, iat) do
+  def jwt(scope, sub), do: jwt(scope, sub, :os.system_time(:seconds))
+  def jwt(scope, sub, iat) do
     {:ok, key} = Config.get(:private_key)
     scope
-    |> claims(iat)
+    |> claims(sub, iat)
     |> JsonWebToken.sign(%{alg: "RS256", key: JsonWebToken.Algorithm.RsaUtil.private_key(key)})
   end
 

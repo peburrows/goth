@@ -11,8 +11,8 @@ defmodule Goth.TokenStoreTest do
   end
 
   test "we can store an access token" do
-    TokenStore.store("devstorage.readonly, prediction", %Token{token: "123", type: "Bearer", expires: :os.system_time(:seconds)+1000})
-    {:ok, token} = TokenStore.find("devstorage.readonly, prediction")
+    TokenStore.store("devstorage.readonly, prediction", nil, %Token{token: "123", type: "Bearer", expires: :os.system_time(:seconds)+1000})
+    {:ok, token} = TokenStore.find("devstorage.readonly, prediction", nil)
     assert %Token{token: "123", type: "Bearer"} = token
     assert token.expires > :os.system_time(:seconds) + 900
   end
@@ -30,18 +30,18 @@ defmodule Goth.TokenStoreTest do
       Plug.Conn.resp(conn, 201, Poison.encode!(%{"access_token" => "fresh", "token_type" => "Bearer", "expires_in" => 3600}))
     end
 
-    token = %Token{scope: "refresh-me", token: "stale", type: "Bearer", expires: 1}
+    token = %Token{scope: "refresh-me", sub: nil, token: "stale", type: "Bearer", expires: 1}
     task = TokenStore.store(token)
     ref  = Process.monitor(task.pid)
     assert_receive {:DOWN, ^ref, :process, _, :normal}, 1000
-    assert {:ok, %Token{token: "fresh"}} = TokenStore.find("refresh-me")
+    assert {:ok, %Token{token: "fresh"}} = TokenStore.find("refresh-me", nil)
   end
 
   # Edge case, should be refreshed automatically but on dev machines
   # which go to sleep, it is not always happeneing
   test "find never returns stale tokens", %{bypass: _bypass} do
-    token = %Token{scope: "expired", token: "stale", type: "Bearer", expires: 1}
+    token = %Token{scope: "expired", sub: nil, token: "stale", type: "Bearer", expires: 1}
     {:ok, _pid} = GenServer.start_link(Goth.TokenStore,%{"expired" => token})
-    assert :error = TokenStore.find("expired")
+    assert :error = TokenStore.find("expired", nil)
   end
 end

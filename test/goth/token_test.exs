@@ -15,12 +15,12 @@ defmodule Goth.TokenTest do
       token: "1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M",
       type: "Bearer",
       expires: _exp
-    } = Token.from_response_json("scope", json)
+    } = Token.from_response_json("scope", nil, json)
   end
 
   test "it calculates the expiration from the expires_in attr" do
     json = ~s({"token_type":"Bearer","expires_in":3600,"access_token":"1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M"})
-    token = Token.from_response_json("my-scope", json)
+    token = Token.from_response_json("my-scope", nil, json)
     assert token.expires > :os.system_time(:seconds) + 3000
   end
 
