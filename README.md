@@ -28,7 +28,7 @@ A simple library to generate and retrieve Oauth2 tokens for use with Google Clou
 ## Usage
 
 ### Retrieve a token:
-Call `Token.for_scope/1` passing in a string of scopes, separated by a comma:
+Call `Token.for_scope/1` passing in a string of scopes, separated by a space:
 ```elixir
 alias Goth.Token
 {:ok, token} = Token.for_scope("https://www.googleapis.com/auth/pubsub")
