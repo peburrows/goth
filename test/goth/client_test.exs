@@ -80,8 +80,8 @@ defmodule Goth.ClientTest do
       uri = "/computeMetadata/v1/instance/service-accounts/default/token"
       assert(uri == conn.request_path, "Default account token should be requested")
       assert(conn.method == "GET", "Request method should be GET")
-      # assert(Plug.Conn.get_req_header(conn, "metadata-flavor") == "Google",
-      #        "Metadata header should be set correctly")
+      assert(Plug.Conn.get_req_header(conn, "metadata-flavor") == ["Google"],
+             "Metadata header should be set correctly")
       Plug.Conn.resp(conn, 200, Poison.encode!(token_response))
     end)
 
