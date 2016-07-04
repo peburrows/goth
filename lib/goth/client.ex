@@ -3,15 +3,34 @@ defmodule Goth.Client do
   alias Goth.Token
 
   def get_access_token(scope) do
+    token_source = Application.get_env(:goth, :token_source, :metadata)
+    get_access_token(token_source, scope)
+  end
+
+  # Fetch an access token from Google's metadata service for applications running
+  # on Google's Cloud platform.
+  # Scopes are not checked for tokens retrieved from the metadata service.
+  def get_access_token(:metadata, scope) do
+    headers  = [{"Metadata-Flavor", "Google"}]
+    account  = Application.get_env(:goth, :metadata_account, "default")
+    metadata = Application.get_env(:goth, :metadata_url,
+                                   "http://metadata.google.internal")
+    endpoint = "computeMetadata/v1/instance/service-accounts"
+    url      = "#{metadata}/#{endpoint}/#{account}/token"
+
+    {:ok, token} = HTTPoison.get(url, headers)
+    {:ok, Token.from_response_json(scope, token.body)}
+  end
+
+  # Fetch an access token from Google's OAuth service using a JWT
+  def get_access_token(:oauth, scope) do
     endpoint = Application.get_env(:goth, :endpoint, "https://www.googleapis.com")
+    url      = "#{endpoint}/oauth2/v4/token"
+    body     = {:form, [grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+                        assertion:  jwt(scope)]}
+    headers  = [{"Content-Type", "application/x-www-form-urlencoded"}]
 
-    {:ok, response} = HTTPoison.post( Path.join([endpoint, "/oauth2/v4/token"]),
-                                      {:form, [grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-                                               assertion:  jwt(scope)]
-                                      },
-                                      [ {"Content-Type", "application/x-www-form-urlencoded"} ]
-                                    )
-
+    {:ok, response} = HTTPoison.post(url, body, headers)
     {:ok, Token.from_response_json(scope, response.body)}
   end
 
