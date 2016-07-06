@@ -76,16 +76,25 @@ defmodule Goth.ClientTest do
       "expires_in"   => 3600
     }
 
+    scopes = ["https://www.googleapis.com/auth/pubsub",
+              "https://www.googleapis.com/auth/taskqueue"]
+    scopes_response = Enum.join(scopes, "\n")
+
     Bypass.expect(bypass, fn(conn) ->
-      uri = "/computeMetadata/v1/instance/service-accounts/default/token"
-      assert(uri == conn.request_path, "Default account token should be requested")
+      url_t = "/computeMetadata/v1/instance/service-accounts/default/token"
+      url_s = "/computeMetadata/v1/instance/service-accounts/default/scopes"
+
       assert(conn.method == "GET", "Request method should be GET")
       assert(Plug.Conn.get_req_header(conn, "metadata-flavor") == ["Google"],
              "Metadata header should be set correctly")
-      Plug.Conn.resp(conn, 200, Poison.encode!(token_response))
+
+      case conn.request_path do
+        ^url_t -> Plug.Conn.resp(conn, 200, Poison.encode!(token_response))
+        ^url_s -> Plug.Conn.resp(conn, 200, scopes_response)
+      end
     end)
 
-    {:ok, data} = Client.get_access_token(:metadata, "taskqueue")
+    {:ok, data} = Client.get_access_token(:metadata, Enum.join(scopes, " "))
 
     at = token_response["access_token"]
     tt = token_response["token_type"]

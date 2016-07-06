@@ -9,17 +9,21 @@ defmodule Goth.Client do
 
   # Fetch an access token from Google's metadata service for applications running
   # on Google's Cloud platform.
-  # Scopes are not checked for tokens retrieved from the metadata service.
   def get_access_token(:metadata, scope) do
     headers  = [{"Metadata-Flavor", "Google"}]
     account  = Application.get_env(:goth, :metadata_account, "default")
     metadata = Application.get_env(:goth, :metadata_url,
                                    "http://metadata.google.internal")
     endpoint = "computeMetadata/v1/instance/service-accounts"
-    url      = "#{metadata}/#{endpoint}/#{account}/token"
+    url_base = "#{metadata}/#{endpoint}/#{account}"
 
-    {:ok, token} = HTTPoison.get(url, headers)
-    {:ok, Token.from_response_json(scope, token.body)}
+    if check_metadata_scope(url_base, scope) do
+      url      = "#{url_base}/token"
+      {:ok, token} = HTTPoison.get(url, headers)
+      {:ok, Token.from_response_json(scope, token.body)}
+    else
+      {:error, :scope_denied}
+    end
   end
 
   # Fetch an access token from Google's OAuth service using a JWT
@@ -55,5 +59,19 @@ defmodule Goth.Client do
     scope
     |> claims(iat)
     |> JsonWebToken.sign(%{alg: "RS256", key: JsonWebToken.Algorithm.RsaUtil.private_key(key)})
+  end
+
+  # The metadata service returns tokens regardless of the requested scope, but
+  # scopes can be checked at the separate scopes endpoint.
+  # This function takes care of that in order to verify scope for metadata
+  # based token requests as well.
+  def check_metadata_scope(url_base, requested) do
+    headers  = [{"Metadata-Flavor", "Google"}]
+    {:ok, scopes} = HTTPoison.get("#{url_base}/scopes", headers)
+    scopes = String.split(scopes.body, "\n")
+
+    requested
+    |> String.split(" ")
+    |> Enum.all?(fn(scope) -> Enum.member?(scopes, scope) end)
   end
 end
