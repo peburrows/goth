@@ -39,9 +39,9 @@ defmodule Goth.TokenStoreTest do
 
   # Edge case, should be refreshed automatically but on dev machines
   # which go to sleep, it is not always happeneing
-  test "find never returns stale tokens", %{bypass: bypass} do
+  test "find never returns stale tokens", %{bypass: _bypass} do
     token = %Token{scope: "expired", token: "stale", type: "Bearer", expires: 1}
-    {:ok, pid} = GenServer.start_link(Goth.TokenStore,%{"expired" => token})
+    {:ok, _pid} = GenServer.start_link(Goth.TokenStore,%{"expired" => token})
     assert :error = TokenStore.find("expired")
   end
 end
