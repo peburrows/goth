@@ -8,7 +8,7 @@ A simple library to generate and retrieve Oauth2 tokens for use with Google Clou
 1. Add Goth to your list of dependencies in `mix.exs`:
   ```elixir
   def deps do
-    [{:goth, "~> 0.0.1"}]
+    [{:goth, "~> 0.1.4"}]
   end
   ```
 
