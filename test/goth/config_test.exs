@@ -23,4 +23,8 @@ defmodule Goth.ConfigTest do
       assert {:ok, state[key]} == Config.get(key)
     end)
   end
+
+  test "the initial state has the token_source set to oauth" do
+    assert {:ok, :oauth} == Config.get(:token_source)
+  end
 end

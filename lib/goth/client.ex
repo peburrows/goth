@@ -3,7 +3,7 @@ defmodule Goth.Client do
   alias Goth.Token
 
   def get_access_token(scope) do
-    token_source = Application.get_env(:goth, :token_source, :metadata)
+    {:ok, token_source} = Config.get(:token_source)
     get_access_token(token_source, scope)
   end
 
