@@ -8,6 +8,7 @@ defmodule Goth.Config do
   def init(:ok) do
     case Application.get_env(:goth, :json) do
       nil  -> {:ok, Application.get_env(:goth, :config, %{})}
+      {:system, var} -> {:ok, Poison.decode!(System.get_env(var)) }
       json -> {:ok, Poison.decode!(json)}
     end
   end
