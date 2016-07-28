@@ -19,7 +19,7 @@ defmodule Goth.Mixfile do
 
   defp deps do
     [{:json_web_token, "~> 0.2.5"},
-     {:httpoison, "~> 0.8.0"},
+     {:httpoison, "~> 0.9.0"},
      {:poison, "~> 2.1"},
      {:bypass, "~> 0.1", only: :test},
      {:mix_test_watch, "~> 0.2", only: :dev},
