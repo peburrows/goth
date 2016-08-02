@@ -74,4 +74,14 @@ defmodule Goth.Client do
     |> String.split(" ")
     |> Enum.all?(fn(scope) -> Enum.member?(scopes, scope) end)
   end
+
+  @doc "Retrieves the project ID from Google's metadata service"
+  def retrieve_metadata_project do
+    headers  = [{"Metadata-Flavor", "Google"}]
+    endpoint = "computeMetadata/v1/project/project-id"
+    metadata = Application.get_env(:goth, :metadata_url,
+      "http://metadata.google.internal")
+    url      = "#{metadata}/#{endpoint}"
+    HTTPoison.get!(url, headers).body
+  end
 end

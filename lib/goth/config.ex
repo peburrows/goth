@@ -1,5 +1,6 @@
 defmodule Goth.Config do
   use GenServer
+  alias Goth.Client
 
   def start_link do
     GenServer.start_link(__MODULE__, :ok, [name: __MODULE__])
@@ -8,7 +9,8 @@ defmodule Goth.Config do
   def init(:ok) do
     case Application.get_env(:goth, :json) do
       nil  -> {:ok, Application.get_env(:goth, :config,
-                %{"token_source" => :metadata})}
+                %{"token_source" => :metadata,
+                  "project_id" => Client.retrieve_metadata_project()})}
       json -> {:ok, decode_json(json)}
     end
   end

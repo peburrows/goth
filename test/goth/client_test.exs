@@ -53,7 +53,7 @@ defmodule Goth.ClientTest do
 
     at = token_response["access_token"]
     tt = token_response["token_type"]
-    
+
     assert %Token{token: ^at, type: ^tt, expires: _exp} = data
   end
 
