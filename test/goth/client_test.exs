@@ -5,7 +5,9 @@ defmodule Goth.ClientTest do
 
   setup do
     bypass = Bypass.open
-    Application.put_env(:goth, :endpoint, "http://localhost:#{bypass.port}")
+    bypass_url = "http://localhost:#{bypass.port}"
+    Application.put_env(:goth, :endpoint, bypass_url)
+    Application.put_env(:goth, :metadata_url, bypass_url)
     {:ok, bypass: bypass}
   end
 
@@ -51,7 +53,7 @@ defmodule Goth.ClientTest do
 
     at = token_response["access_token"]
     tt = token_response["token_type"]
-    
+
     assert %Token{token: ^at, type: ^tt, expires: _exp} = data
   end
 
@@ -65,5 +67,39 @@ defmodule Goth.ClientTest do
     generated = Client.claims(scope, claims["iat"])
 
     assert ^generated = claims
+  end
+
+  test "We call the metadata service correctly and decode the token", %{bypass: bypass} do
+    token_response = %{
+      "access_token" => "1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M",
+      "token_type"   => "Bearer",
+      "expires_in"   => 3600
+    }
+
+    scopes = ["https://www.googleapis.com/auth/pubsub",
+              "https://www.googleapis.com/auth/taskqueue"]
+    scopes_response = Enum.join(scopes, "\n")
+
+    Bypass.expect(bypass, fn(conn) ->
+      url_t = "/computeMetadata/v1/instance/service-accounts/default/token"
+      url_s = "/computeMetadata/v1/instance/service-accounts/default/scopes"
+
+      assert(conn.method == "GET", "Request method should be GET")
+      assert(Plug.Conn.get_req_header(conn, "metadata-flavor") == ["Google"],
+             "Metadata header should be set correctly")
+
+      case conn.request_path do
+        ^url_t -> Plug.Conn.resp(conn, 200, Poison.encode!(token_response))
+        ^url_s -> Plug.Conn.resp(conn, 200, scopes_response)
+      end
+    end)
+
+    {:ok, data} = Client.get_access_token(:metadata, Enum.join(scopes, " "))
+
+    at = token_response["access_token"]
+    tt = token_response["token_type"]
+
+    assert(%Token{token: ^at, type: ^tt, expires: _exp} = data,
+           "Returned token should match metadata response")
   end
 end

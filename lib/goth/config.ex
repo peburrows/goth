@@ -1,5 +1,6 @@
 defmodule Goth.Config do
   use GenServer
+  alias Goth.Client
 
   def start_link do
     GenServer.start_link(__MODULE__, :ok, [name: __MODULE__])
@@ -7,10 +8,18 @@ defmodule Goth.Config do
 
   def init(:ok) do
     case Application.get_env(:goth, :json) do
-      nil  -> {:ok, Application.get_env(:goth, :config, %{})}
-      {:system, var} -> {:ok, Poison.decode!(System.get_env(var)) }
-      json -> {:ok, Poison.decode!(json)}
+      nil  -> {:ok, Application.get_env(:goth, :config,
+                %{"token_source" => :metadata,
+                  "project_id" => Client.retrieve_metadata_project()})}
+      {:system, var} -> {:ok, decode_json(System.get_env(var)) }
+      json -> {:ok, decode_json(json)}
     end
+  end
+
+  # Decodes JSON (if configured) and sets oauth token source
+  defp decode_json(json) do
+    Poison.decode!(json)
+    |> Map.put("token_source", :oauth)
   end
 
   def set(key, value) when is_atom(key), do: key |> to_string |> set(value)

@@ -3,15 +3,38 @@ defmodule Goth.Client do
   alias Goth.Token
 
   def get_access_token(scope) do
+    {:ok, token_source} = Config.get(:token_source)
+    get_access_token(token_source, scope)
+  end
+
+  # Fetch an access token from Google's metadata service for applications running
+  # on Google's Cloud platform.
+  def get_access_token(:metadata, scope) do
+    headers  = [{"Metadata-Flavor", "Google"}]
+    account  = Application.get_env(:goth, :metadata_account, "default")
+    metadata = Application.get_env(:goth, :metadata_url,
+                                   "http://metadata.google.internal")
+    endpoint = "computeMetadata/v1/instance/service-accounts"
+    url_base = "#{metadata}/#{endpoint}/#{account}"
+
+    if check_metadata_scope(url_base, scope) do
+      url      = "#{url_base}/token"
+      {:ok, token} = HTTPoison.get(url, headers)
+      {:ok, Token.from_response_json(scope, token.body)}
+    else
+      {:error, :scope_denied}
+    end
+  end
+
+  # Fetch an access token from Google's OAuth service using a JWT
+  def get_access_token(:oauth, scope) do
     endpoint = Application.get_env(:goth, :endpoint, "https://www.googleapis.com")
+    url      = "#{endpoint}/oauth2/v4/token"
+    body     = {:form, [grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+                        assertion:  jwt(scope)]}
+    headers  = [{"Content-Type", "application/x-www-form-urlencoded"}]
 
-    {:ok, response} = HTTPoison.post( Path.join([endpoint, "/oauth2/v4/token"]),
-                                      {:form, [grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-                                               assertion:  jwt(scope)]
-                                      },
-                                      [ {"Content-Type", "application/x-www-form-urlencoded"} ]
-                                    )
-
+    {:ok, response} = HTTPoison.post(url, body, headers)
     {:ok, Token.from_response_json(scope, response.body)}
   end
 
@@ -36,5 +59,29 @@ defmodule Goth.Client do
     scope
     |> claims(iat)
     |> JsonWebToken.sign(%{alg: "RS256", key: JsonWebToken.Algorithm.RsaUtil.private_key(key)})
+  end
+
+  # The metadata service returns tokens regardless of the requested scope, but
+  # scopes can be checked at the separate scopes endpoint.
+  # This function takes care of that in order to verify scope for metadata
+  # based token requests as well.
+  def check_metadata_scope(url_base, requested) do
+    headers  = [{"Metadata-Flavor", "Google"}]
+    {:ok, scopes} = HTTPoison.get("#{url_base}/scopes", headers)
+    scopes = String.split(scopes.body, "\n")
+
+    requested
+    |> String.split(" ")
+    |> Enum.all?(fn(scope) -> Enum.member?(scopes, scope) end)
+  end
+
+  @doc "Retrieves the project ID from Google's metadata service"
+  def retrieve_metadata_project do
+    headers  = [{"Metadata-Flavor", "Google"}]
+    endpoint = "computeMetadata/v1/project/project-id"
+    metadata = Application.get_env(:goth, :metadata_url,
+      "http://metadata.google.internal")
+    url      = "#{metadata}/#{endpoint}"
+    HTTPoison.get!(url, headers).body
   end
 end
