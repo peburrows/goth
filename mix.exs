@@ -3,7 +3,7 @@ defmodule Goth.Mixfile do
 
   def project do
     [app: :goth,
-     version: "0.1.6",
+     version: "0.2.0",
      description: description,
      package: package,
      elixir: "~> 1.2",

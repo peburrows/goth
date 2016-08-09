@@ -1,7 +1,9 @@
 # Goth
 Google + Auth = Goth
 
-A simple library to generate and retrieve Oauth2 tokens for use with Google Cloud Service accounts.
+A simple library to generate and retrieve OAuth2 tokens for use with Google Cloud Service accounts.
+
+It can either retrieve tokens using service account credentials or from Google's metadata service for applications running on Google Cloud Platform.
 
 ## Installation
 
@@ -24,6 +26,8 @@ A simple library to generate and retrieve Oauth2 tokens for use with Google Clou
   config :goth,
     json: "path/to/google/json/creds.json" |> File.read!
   ```
+
+You can skip the last step if your application will run on a GCP or GKE instance with appropriate permissions.
 
 ## Usage
 

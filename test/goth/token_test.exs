@@ -5,6 +5,7 @@ defmodule Goth.TokenTest do
   setup do
     bypass = Bypass.open
     Application.put_env(:goth, :endpoint, "http://localhost:#{bypass.port}")
+    Application.put_env(:goth, :token_source, :oauth)
     {:ok, bypass: bypass}
   end
 
