@@ -1,4 +1,18 @@
 defmodule Goth.Config do
+  @moduledoc """
+  `Goth.Config` is a `GenServer` that holds the current configuration.
+  This configuration is loaded from one of three places:
+
+  1. a JSON string passed in via your application's config
+  2. a ENV variable passed in via your application's config
+  3. Google's metadata service (note: this only works if running in GCP)
+
+  The `Goth.Config` server exists mostly for other parts of your application
+  (or other libraries) to pull the current configuration state,
+  via `Goth.Config.get/1`. If necessary, you can also set config values via
+  `Goth.Config.set/2`
+  """
+
   use GenServer
   alias Goth.Client
 
@@ -18,7 +32,8 @@ defmodule Goth.Config do
 
   # Decodes JSON (if configured) and sets oauth token source
   defp decode_json(json) do
-    Poison.decode!(json)
+    json
+    |> Poison.decode!
     |> Map.put("token_source", :oauth)
   end
 

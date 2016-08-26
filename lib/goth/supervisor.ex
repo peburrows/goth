@@ -1,4 +1,6 @@
 defmodule Goth.Supervisor do
+  @moduledoc false
+
   use Supervisor
   alias Goth.Config
   alias Goth.TokenStore

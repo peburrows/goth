@@ -2,6 +2,22 @@ defmodule Goth.Client do
   alias Goth.Config
   alias Goth.Token
 
+  @moduledoc """
+  `Goth.Client` is the module through which all interaction with Google's APIs flows.
+  For the most part, you probably don't want to use this module directly, but instead
+  use the other modules that cache and wrap the underlying API calls.
+  """
+
+  @doc """
+  *Note:* Most often, you'll want to use `Goth.Token.for_scope/1` instead of this method.
+  As the docs for `Goth.Token.for_scope/1` note, it will return a cached token if one
+  already exists, thus saving you the cost of a round-trip to the server to generate a
+  new token.
+
+  `Goth.Client.get_access_token/1`, on the other hand will always hit the server to
+  retrieve a new token.
+  """
+
   def get_access_token(scope) do
     {:ok, token_source} = Config.get(:token_source)
     get_access_token(token_source, scope)
@@ -51,7 +67,11 @@ defmodule Goth.Client do
   end
 
   def json(scope), do: json(scope, :os.system_time(:seconds))
-  def json(scope, iat), do: claims(scope, iat) |> Poison.encode!
+  def json(scope, iat) do
+    scope
+    |> claims(iat)
+    |> Poison.encode!
+  end
 
   def jwt(scope), do: jwt(scope, :os.system_time(:seconds))
   def jwt(scope, iat) do
