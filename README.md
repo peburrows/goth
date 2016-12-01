@@ -29,7 +29,7 @@ It can either retrieve tokens using service account credentials or from Google's
   
   Or, via an ENV var:
   ```elixir
-  config :goth, json: {:system, "GCP_CREDENTIALS"}}
+  config :goth, json: {:system, "GCP_CREDENTIALS"}
   ```
 
 You can skip the last step if your application will run on a GCP or GKE instance with appropriate permissions.
