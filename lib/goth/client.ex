@@ -54,7 +54,14 @@ defmodule Goth.Client do
     {:ok, Token.from_response_json(scope, response.body)}
   end
 
-  def claims(scope), do: claims(scope, :os.system_time(:seconds), Config.get(:sub))
+  defp sub_config do
+    case Config.get(:sub) do
+      {:ok, sub} -> sub
+      _ -> nil
+    end
+  end
+
+  def claims(scope), do: claims(scope, :os.system_time(:seconds), sub_config)
   def claims(scope, iat, nil) do
     {:ok, email} = Config.get(:client_email)
     %{
@@ -80,7 +87,7 @@ defmodule Goth.Client do
   def json(scope), do: json(scope, :os.system_time(:seconds))
   def json(scope, iat) do
     scope
-    |> claims(iat)
+    |> claims(iat, sub_config)
     |> Poison.encode!
   end
 
@@ -88,7 +95,7 @@ defmodule Goth.Client do
   def jwt(scope, iat) do
     {:ok, key} = Config.get(:private_key)
     scope
-    |> claims(iat)
+    |> claims(iat, sub_config)
     |> JsonWebToken.sign(%{alg: "RS256", key: JsonWebToken.Algorithm.RsaUtil.private_key(key)})
   end
 
