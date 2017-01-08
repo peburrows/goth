@@ -62,6 +62,7 @@ defmodule Goth.Client do
   end
 
   def claims(scope), do: claims(scope, :os.system_time(:seconds), sub_config)
+  def claims(scope, iat), do: claims(scope, iat, nil)
   def claims(scope, iat, nil) do
     {:ok, email} = Config.get(:client_email)
     %{
