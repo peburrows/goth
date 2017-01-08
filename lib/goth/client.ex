@@ -54,8 +54,8 @@ defmodule Goth.Client do
     {:ok, Token.from_response_json(scope, response.body)}
   end
 
-  def claims(scope), do: claims(scope, :os.system_time(:seconds))
-  def claims(scope, iat) do
+  def claims(scope), do: claims(scope, :os.system_time(:seconds), Config.get(:sub))
+  def claims(scope, iat, nil) do
     {:ok, email} = Config.get(:client_email)
     %{
       "iss"   => email,
@@ -63,6 +63,17 @@ defmodule Goth.Client do
       "aud"   => "https://www.googleapis.com/oauth2/v4/token",
       "iat"   => iat,
       "exp"   => iat+10
+    }
+  end
+  def claims(scope, iat, sub) do
+    {:ok, email} = Config.get(:client_email)
+    %{
+      "iss"   => email,
+      "scope" => scope,
+      "aud"   => "https://www.googleapis.com/oauth2/v4/token",
+      "iat"   => iat,
+      "exp"   => iat+10,
+      "sub"   => sub
     }
   end
 
