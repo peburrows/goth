@@ -51,7 +51,11 @@ defmodule Goth.Client do
     headers  = [{"Content-Type", "application/x-www-form-urlencoded"}]
 
     {:ok, response} = HTTPoison.post(url, body, headers)
-    {:ok, Token.from_response_json(scope, response.body)}
+    if response.status_code >= 200 && response.status_code < 300 do
+      {:ok, Token.from_response_json(scope, response.body)}
+    else
+      {:error, "Could not retrieve token, response: #{response.body}"}
+    end
   end
 
   def claims(scope), do: claims(scope, :os.system_time(:seconds))

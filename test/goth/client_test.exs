@@ -102,4 +102,26 @@ defmodule Goth.ClientTest do
     assert(%Token{token: ^at, type: ^tt, expires: _exp} = data,
            "Returned token should match metadata response")
   end
+
+  test "When authentication fail, warn the user of the issue", %{bypass: bypass} do
+    token_response = %{
+      "error" => "deleted_client",
+      "error_description" => "The OAuth client was deleted."
+    }
+
+    scope = "prediction"
+
+    Bypass.expect bypass, fn conn ->
+      assert "/oauth2/v4/token" == conn.request_path
+      assert "POST"             == conn.method
+
+      assert_body_is_legit_jwt(conn, scope)
+
+      Plug.Conn.resp(conn, 401, Poison.encode!(token_response))
+    end
+
+    {:error, data} = Client.get_access_token(scope)
+
+    assert data =~ "Could not retrieve token, response:"
+  end
 end
