@@ -93,8 +93,11 @@ defmodule Goth.Token do
   end
 
   defp retrieve_and_store!(scope, sub) do
-    {:ok, token} = Client.get_access_token(:oauth, scope, sub)
-    TokenStore.store(scope, sub, token)
-    {:ok, token}
+    case Client.get_access_token(:oauth, scope, sub) do
+      {:ok, token} ->
+        TokenStore.store(scope, sub, token)
+        {:ok, token}
+      {:error, reason} -> {:error, reason}
+    end
   end
 end
