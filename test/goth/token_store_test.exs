@@ -12,7 +12,7 @@ defmodule Goth.TokenStoreTest do
 
   test "we can store an access token" do
     TokenStore.store("devstorage.readonly, prediction", nil, %Token{token: "123", type: "Bearer", expires: :os.system_time(:seconds)+1000})
-    {:ok, token} = TokenStore.find("devstorage.readonly, prediction", nil)
+    {:ok, token} = TokenStore.find("devstorage.readonly, prediction")
     assert %Token{token: "123", type: "Bearer"} = token
     assert token.expires > :os.system_time(:seconds) + 900
   end
@@ -34,7 +34,7 @@ defmodule Goth.TokenStoreTest do
     task = TokenStore.store(token)
     ref  = Process.monitor(task.pid)
     assert_receive {:DOWN, ^ref, :process, _, :normal}, 1000
-    assert {:ok, %Token{token: "fresh"}} = TokenStore.find("refresh-me", nil)
+    assert {:ok, %Token{token: "fresh"}} = TokenStore.find("refresh-me")
   end
 
   # Edge case, should be refreshed automatically but on dev machines
@@ -42,6 +42,6 @@ defmodule Goth.TokenStoreTest do
   test "find never returns stale tokens", %{bypass: _bypass} do
     token = %Token{scope: "expired", sub: nil, token: "stale", type: "Bearer", expires: 1}
     {:ok, _pid} = GenServer.start_link(Goth.TokenStore,%{"expired" => token})
-    assert :error = TokenStore.find("expired", nil)
+    assert :error = TokenStore.find("expired")
   end
 end

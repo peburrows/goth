@@ -35,7 +35,7 @@ defmodule Goth.TokenStore do
       {:ok, ^token} = Goth.TokenStore.find(token.scope)
   """
   @spec find(String.t, String.t) :: {:ok, Token.t} | :error
-  def find(scope, sub) do
+  def find(scope, sub \\ nil) do
     GenServer.call(__MODULE__, {:find, {scope, sub}})
   end
 

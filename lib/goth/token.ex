@@ -59,18 +59,8 @@ defmodule Goth.Token do
   @doc """
   Parse a successful JSON response from Google's token API and extract a `%Goth.Token{}`
   """
-  @spec from_response_json(String.t, String.t) :: t
-  def from_response_json(scope, json) do
-    {:ok, attrs} = json |> Poison.decode
-    %__MODULE__{
-      token:   attrs["access_token"],
-      type:    attrs["token_type"],
-      scope:   scope,
-      expires: :os.system_time(:seconds) + attrs["expires_in"]
-    }
-  end
   @spec from_response_json(String.t, String.t, String.t) :: t
-  def from_response_json(scope, sub, json) do
+  def from_response_json(scope, json, sub \\ nil) do
     {:ok, attrs} = json |> Poison.decode
     %__MODULE__{
       token:   attrs["access_token"],

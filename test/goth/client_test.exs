@@ -23,24 +23,7 @@ defmodule Goth.ClientTest do
       "aud"   => "https://www.googleapis.com/oauth2/v4/token",
       "iat"   => ^iat,
       "exp"   =>   ^exp
-    } = Client.claims(scope, nil)
-  end
-
-  test "we include all necessary attributes in the JWT, including sub" do
-    {:ok, email} = Goth.Config.get(:client_email)
-    iat = :os.system_time(:seconds)
-    exp = iat+10
-    scope = "prediction"
-    sub = "test@test.com"
-
-    assert %{
-      "iss"   => ^email,
-      "scope" => ^scope,
-      "sub"   => ^sub,
-      "aud"   => "https://www.googleapis.com/oauth2/v4/token",
-      "iat"   => ^iat,
-      "exp"   =>   ^exp
-    } = Client.claims(scope, sub)
+    } = Client.claims(scope)
   end
 
   test "the claims json generated is legit" do
@@ -81,7 +64,7 @@ defmodule Goth.ClientTest do
     [_header, claims, _sign] = String.split(body, ".")
     claims = claims |> JsonWebToken.Format.Base64Url.decode |> Poison.decode!
 
-    generated = Client.claims(scope, nil, claims["iat"])
+    generated = Client.claims(scope, claims["iat"])
 
     assert ^generated = claims
   end

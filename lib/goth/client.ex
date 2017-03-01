@@ -43,8 +43,7 @@ defmodule Goth.Client do
   end
 
   # Fetch an access token from Google's OAuth service using a JWT
-  def get_access_token(:oauth, scope), do: get_access_token(:oauth, scope, nil)
-  def get_access_token(:oauth, scope, sub) do
+  def get_access_token(:oauth, scope, sub \\ nil) do
     endpoint = Application.get_env(:goth, :endpoint, "https://www.googleapis.com")
     url      = "#{endpoint}/oauth2/v4/token"
     body     = {:form, [grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
@@ -53,35 +52,29 @@ defmodule Goth.Client do
 
     {:ok, response} = HTTPoison.post(url, body, headers)
     if response.status_code >= 200 && response.status_code < 300 do
-      {:ok, Token.from_response_json(scope, sub, response.body)}
+      {:ok, Token.from_response_json(scope, response.body, sub)}
     else
       {:error, "Could not retrieve token, response: #{response.body}"}
     end
   end
 
-  def claims(scope, sub), do: claims(scope, sub, :os.system_time(:seconds))
-  def claims(scope, sub, iat) do
+  def claims(scope), do: claims(scope, :os.system_time(:seconds))
+  def claims(scope, iat) do
     {:ok, email} = Config.get(:client_email)
-
-    claims = %{
+    %{
       "iss"   => email,
       "scope" => scope,
       "aud"   => "https://www.googleapis.com/oauth2/v4/token",
       "iat"   => iat,
       "exp"   => iat+10
     }
-
-    if sub do
-      Map.put(claims, "sub", sub)
-    else
-      claims
-    end
   end
 
   def json(scope, sub), do: json(scope, sub, :os.system_time(:seconds))
   def json(scope, sub, iat) do
     scope
-    |> claims(sub, iat)
+    |> claims(iat)
+    |> maybe_put_sub(sub)
     |> Poison.encode!
   end
 
@@ -89,9 +82,13 @@ defmodule Goth.Client do
   def jwt(scope, sub, iat) do
     {:ok, key} = Config.get(:private_key)
     scope
-    |> claims(sub, iat)
+    |> claims(iat)
+    |> maybe_put_sub(sub)
     |> JsonWebToken.sign(%{alg: "RS256", key: JsonWebToken.Algorithm.RsaUtil.private_key(key)})
   end
+
+  defp maybe_put_sub(map, nil), do: map
+  defp maybe_put_sub(map, sub), do: Map.put(map, "sub", sub)
 
   # The metadata service returns tokens regardless of the requested scope, but
   # scopes can be checked at the separate scopes endpoint.
