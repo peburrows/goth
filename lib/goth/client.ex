@@ -43,16 +43,16 @@ defmodule Goth.Client do
   end
 
   # Fetch an access token from Google's OAuth service using a JWT
-  def get_access_token(:oauth, scope) do
+  def get_access_token(:oauth, scope, sub \\ nil) do
     endpoint = Application.get_env(:goth, :endpoint, "https://www.googleapis.com")
     url      = "#{endpoint}/oauth2/v4/token"
     body     = {:form, [grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-                        assertion:  jwt(scope)]}
+                        assertion:  jwt(scope, sub)]}
     headers  = [{"Content-Type", "application/x-www-form-urlencoded"}]
 
     {:ok, response} = HTTPoison.post(url, body, headers)
     if response.status_code >= 200 && response.status_code < 300 do
-      {:ok, Token.from_response_json(scope, response.body)}
+      {:ok, Token.from_response_json(scope, response.body, sub)}
     else
       {:error, "Could not retrieve token, response: #{response.body}"}
     end
@@ -70,20 +70,25 @@ defmodule Goth.Client do
     }
   end
 
-  def json(scope), do: json(scope, :os.system_time(:seconds))
-  def json(scope, iat) do
+  def json(scope, sub), do: json(scope, sub, :os.system_time(:seconds))
+  def json(scope, sub, iat) do
     scope
     |> claims(iat)
+    |> maybe_put_sub(sub)
     |> Poison.encode!
   end
 
-  def jwt(scope), do: jwt(scope, :os.system_time(:seconds))
-  def jwt(scope, iat) do
+  def jwt(scope, sub), do: jwt(scope, sub, :os.system_time(:seconds))
+  def jwt(scope, sub, iat) do
     {:ok, key} = Config.get(:private_key)
     scope
     |> claims(iat)
+    |> maybe_put_sub(sub)
     |> JsonWebToken.sign(%{alg: "RS256", key: JsonWebToken.Algorithm.RsaUtil.private_key(key)})
   end
+
+  defp maybe_put_sub(map, nil), do: map
+  defp maybe_put_sub(map, sub), do: Map.put(map, "sub", sub)
 
   # The metadata service returns tokens regardless of the requested scope, but
   # scopes can be checked at the separate scopes endpoint.

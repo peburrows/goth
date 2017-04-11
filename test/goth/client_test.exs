@@ -27,7 +27,7 @@ defmodule Goth.ClientTest do
   end
 
   test "the claims json generated is legit" do
-    json = Client.json("prediction")
+    json = Client.json("prediction", nil)
     assert {:ok, _obj} = Poison.decode(json)
   end
 
@@ -49,7 +49,7 @@ defmodule Goth.ClientTest do
       Plug.Conn.resp(conn, 201, Poison.encode!(token_response))
     end
 
-    {:ok, data} = Client.get_access_token(scope)
+    {:ok, data} = Client.get_access_token(:oauth, scope, nil)
 
     at = token_response["access_token"]
     tt = token_response["token_type"]
