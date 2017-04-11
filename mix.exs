@@ -3,11 +3,11 @@ defmodule Goth.Mixfile do
 
   def project do
     [app: :goth,
-     version: "0.3.1",
-     description: description,
-     package: package,
+     version: "0.3.2",
+     description: description(),
+     package: package(),
      elixir: "~> 1.2",
-     deps: deps]
+     deps: deps()]
   end
 
   def application do
