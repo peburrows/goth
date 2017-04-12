@@ -21,12 +21,17 @@ defmodule Goth.Config do
   end
 
   def init(:ok) do
+    send(self(), :after_init)
+    {:ok, %{}}
+  end
+
+  def handle_info(:after_init, _state) do
     case Application.get_env(:goth, :json) do
-      nil  -> {:ok, Application.get_env(:goth, :config,
+      nil  -> {:noreply, Application.get_env(:goth, :config,
                 %{"token_source" => :metadata,
                   "project_id" => Client.retrieve_metadata_project()})}
-      {:system, var} -> {:ok, decode_json(System.get_env(var)) }
-      json -> {:ok, decode_json(json)}
+      {:system, var} -> {:noreply, decode_json(System.get_env(var)) }
+      json -> {:noreply, decode_json(json)}
     end
   end
 
