@@ -26,12 +26,9 @@ defmodule Goth.Config do
   end
 
   def handle_info(:after_init, _state) do
-    case Application.get_env(:goth, :json) do
-      nil  -> {:noreply, Application.get_env(:goth, :config,
-                %{"token_source" => :metadata,
-                  "project_id" => Client.retrieve_metadata_project()})}
-      {:system, var} -> {:noreply, decode_json(System.get_env(var)) }
-      json -> {:noreply, decode_json(json)}
+    case Application.get_env(:goth, :json_path) do
+      nil -> {:noreply, %{}}
+      path -> {:noreply, path |> File.read!() |> decode_json()}
     end
   end
 
