@@ -29,13 +29,13 @@ It can either retrieve tokens using service account credentials or from Google's
     json: "path/to/google/json/creds.json" |> File.read!
   ```
 
-  Or, via an ENV var:
+  Or, via "GCP_CREDENTIALS" ENV var:
   ```elixir
   config :goth, json: {:system, "GCP_CREDENTIALS"}
   # where GCP_CREDENTIALS is the contents of the JSON credentials file
   ```
 
-  Or, via an "GOOGLE_APPLICATION_CREDENTIALS" ENV var:
+  Or, via "GOOGLE_APPLICATION_CREDENTIALS" ENV var:
   ```elixir
   config :goth, json: {:system, "GOOGLE_APPLICATION_CREDENTIALS"}
   # where GOOGLE_APPLICATION_CREDENTIALS is the path to JSON credentials file
