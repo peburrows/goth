@@ -62,7 +62,7 @@ defmodule Goth.ClientTest do
     assert String.length(body) > 0
 
     [_header, claims, _sign] = String.split(body, ".")
-    claims = claims |> JsonWebToken.Format.Base64Url.decode |> Poison.decode!
+    claims = claims |> Base.url_decode64!(padding: false) |> Poison.decode!
 
     generated = Client.claims(scope, claims["iat"])
 

@@ -6,7 +6,7 @@ defmodule Goth.Mixfile do
      version: "0.4.0",
      description: description(),
      package: package(),
-     elixir: "~> 1.2",
+     elixir: "~> 1.4",
      deps: deps()]
   end
 
@@ -18,7 +18,7 @@ defmodule Goth.Mixfile do
   end
 
   defp deps do
-    [{:json_web_token, "~> 0.2.5"},
+    [{:json_web_token, "~> 0.2.10"},
      {:httpoison, "~> 0.11"},
      {:poison, "~> 2.1 or ~> 3.0"},
      {:bypass, "~> 0.1",         only: :test},
