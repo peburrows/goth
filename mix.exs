@@ -18,7 +18,7 @@ defmodule Goth.Mixfile do
   end
 
   defp deps do
-    [{:json_web_token, "~> 0.2.5"},
+    [{:json_web_token, git: "https://github.com/raquelken/json_web_token_ex", branch: "fix-mpint"},
      {:httpoison, "~> 0.9.0"},
      {:poison, "~> 2.1"},
      {:bypass, "~> 0.1", only: :test},
