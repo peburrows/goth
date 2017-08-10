@@ -65,17 +65,20 @@ defmodule Goth.Client do
     end
   end
 
-  def claims(scope), do: claims(scope, :os.system_time(:seconds), sub_config)
-  def claims(scope, iat), do: claims(scope, iat, nil)
-  def claims(scope, iat, nil) do
+  def claims(scope), do: claims(scope, :os.system_time(:seconds), sub_config())
+  def claims(scope, iat, sub \\ nil) do
     {:ok, email} = Config.get(:client_email)
-    %{
+    base = %{
       "iss"   => email,
       "scope" => scope,
       "aud"   => "https://www.googleapis.com/oauth2/v4/token",
       "iat"   => iat,
       "exp"   => iat+10
     }
+    case sub do
+      nil -> base
+      sub -> Map.merge(base, %{"sub" => sub})
+    end
   end
   def claims(scope, iat, sub) do
     {:ok, email} = Config.get(:client_email)
@@ -92,7 +95,7 @@ defmodule Goth.Client do
   def json(scope), do: json(scope, :os.system_time(:seconds))
   def json(scope, iat) do
     scope
-    |> claims(iat, sub_config)
+    |> claims(iat, sub_config())
     |> Poison.encode!
   end
 
@@ -100,7 +103,7 @@ defmodule Goth.Client do
   def jwt(scope, iat) do
     {:ok, key} = Config.get(:private_key)
     scope
-    |> claims(iat, sub_config)
+    |> claims(iat, sub_config())
     |> JsonWebToken.sign(%{alg: "RS256", key: JsonWebToken.Algorithm.RsaUtil.private_key(key)})
   end
 
