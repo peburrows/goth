@@ -85,9 +85,12 @@ defmodule Goth.Client do
   def retrieve_metadata_project do
     headers  = [{"Metadata-Flavor", "Google"}]
     endpoint = "computeMetadata/v1/project/project-id"
-    metadata = Application.get_env(:goth, :metadata_url,
-      "http://metadata.google.internal")
-    url      = "#{metadata}/#{endpoint}"
-    HTTPoison.get!(url, headers).body
+
+    case Application.get_env(:goth, :metadata_url) do
+      metadata when is_binary(metadata) ->
+        url = "#{metadata}/#{endpoint}"
+        HTTPoison.get!(url, headers).body
+      _ -> %{}
+    end
   end
 end
