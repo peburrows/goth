@@ -61,4 +61,17 @@ defmodule Goth.ConfigTest do
     Application.stop(:goth)
     Application.start(:goth)
   end
+
+  test "config can be overriden manually" do
+    project = "different"
+    Application.put_env(:goth, :project_id, project, persistent: true)
+    Application.stop(:goth)
+
+    Application.start(:goth)
+    assert {:ok, ^project} = Config.get(:project_id)
+
+    Application.put_env(:goth, :project_id, nil, persistent: true)
+    Application.stop(:goth)
+    Application.start(:goth)
+  end
 end

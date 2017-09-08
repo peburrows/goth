@@ -21,12 +21,26 @@ defmodule Goth.Config do
   end
 
   def init(:ok) do
-    case Application.get_env(:goth, :json) do
-      nil  -> {:ok, Application.get_env(:goth, :config,
-                %{"token_source" => :metadata,
-                  "project_id" => Client.retrieve_metadata_project()})}
-      {:system, var} -> {:ok, decode_json(System.get_env(var)) }
-      json -> {:ok, decode_json(json)}
+    config =
+      case Application.get_env(:goth, :json) do
+        nil  ->
+          Application.get_env(:goth, :config,
+            %{"token_source" => :metadata,
+              "project_id" => Client.retrieve_metadata_project()
+            })
+        {:system, var} -> decode_json(System.get_env(var))
+        json           -> decode_json(json)
+      end
+
+    {:ok, overrides(config)}
+  end
+
+  # for now, we only allow overriding the project_id
+  defp overrides(config) do
+    case Application.get_env(:goth, :project_id) do
+      nil            -> config
+      {:system, var} -> Map.put(config, "project_id", System.get_env(var))
+      p              -> Map.put(config, "project_id", p)
     end
   end
 
