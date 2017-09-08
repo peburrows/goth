@@ -25,6 +25,10 @@ defmodule Goth.Config do
       nil  -> {:ok, Application.get_env(:goth, :config,
                 %{"token_source" => :metadata,
                   "project_id" => Client.retrieve_metadata_project()})}
+      {:system, "GOOGLE_APPLICATION_CREDENTIALS"} ->
+        # according to spec here: https://developers.google.com/identity/protocols/application-default-credentials
+        # "How the Application Default Credentials work", point 1. section g.
+        {:ok, System.get_env("GOOGLE_APPLICATION_CREDENTIALS") |> File.read!() |> decode_json()}
       {:system, var} -> {:ok, decode_json(System.get_env(var)) }
       json -> {:ok, decode_json(json)}
     end
