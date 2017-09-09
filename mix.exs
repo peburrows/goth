@@ -25,7 +25,7 @@ defmodule Goth.Mixfile do
      {:mix_test_watch, "~> 0.2", only: :dev},
      {:ex_doc, "~> 0.11.3",      only: :dev},
      {:earmark, "~> 0.2",        only: :dev},
-     {:credo, "~> 0.4",          only: [:test, :dev]}
+     {:credo, "~> 0.8",          only: [:test, :dev]}
     ]
   end
 
