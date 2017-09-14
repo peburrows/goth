@@ -61,4 +61,61 @@ defmodule Goth.ConfigTest do
     Application.stop(:goth)
     Application.start(:goth)
   end
+
+  test "GOOGLE_APPLICATION_CREDENTIALS is read" do
+    # The test configuration sets an example JSON blob. We override it briefly
+    # during this test.
+    current_json = Application.get_env(:goth, :json)
+    Application.put_env(:goth, :json, nil, persistent: true)
+    System.put_env("GOOGLE_APPLICATION_CREDENTIALS",
+                   "config/test-credentials.json")
+    Application.stop(:goth)
+
+    Application.start(:goth)
+    state = "config/test-credentials.json" |> Path.expand |> File.read! |> Poison.decode!
+    state |> Map.keys |> Enum.each(fn(key) ->
+      assert {:ok, state[key]} == Config.get(key)
+    end)
+    assert {:ok, :oauth} == Config.get(:token_source)
+
+    # Restore original config
+    Application.put_env(:goth, :json, current_json, persistent: true)
+    System.delete_env("GOOGLE_APPLICATION_CREDENTIALS")
+    Application.stop(:goth)
+    Application.start(:goth)
+  end
+
+  test "project_id can be overridden in config" do
+    project = "different"
+    Application.put_env(:goth, :project_id, project, persistent: true)
+    Application.stop(:goth)
+
+    Application.start(:goth)
+    assert {:ok, project} == Config.get(:project_id)
+
+    Application.put_env(:goth, :project_id, nil, persistent: true)
+    Application.stop(:goth)
+    Application.start(:goth)
+  end
+
+  test "project_id can be overridden by environment variables" do
+    project_from_env = "different1"
+    project_from_devshell = "different2"
+    System.put_env("DEVSHELL_PROJECT_ID", project_from_devshell)
+    Application.stop(:goth)
+
+    Application.start(:goth)
+    assert {:ok, project_from_devshell} == Config.get(:project_id)
+
+    System.put_env("GOOGLE_CLOUD_PROJECT", project_from_env)
+    Application.stop(:goth)
+
+    Application.start(:goth)
+    assert {:ok, project_from_env} == Config.get(:project_id)
+
+    System.delete_env("DEVSHELL_PROJECT_ID")
+    System.delete_env("GOOGLE_CLOUD_PROJECT")
+    Application.stop(:goth)
+    Application.start(:goth)
+  end
 end
