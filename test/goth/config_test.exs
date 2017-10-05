@@ -25,14 +25,14 @@ defmodule Goth.ConfigTest do
   end
 
   test "the initial state is what's passed in from the app config" do
-    state = "config/test-credentials.json" |> Path.expand |> File.read! |> Poison.decode!
+    state = "test/data/test-credentials.json" |> Path.expand |> File.read! |> Poison.decode!
     state |> Map.keys |> Enum.each(fn(key) ->
       assert {:ok, state[key]} == Config.get(key)
     end)
   end
 
-  test "the initial state has the token_source set to oauth" do
-    assert {:ok, :oauth} == Config.get(:token_source)
+  test "the initial state has the token_source set to oauth_jwt" do
+    assert {:ok, :oauth_jwt} == Config.get(:token_source)
   end
 
   test "Goth correctly retrieves project IDs from metadata", %{bypass: bypass} do
@@ -68,19 +68,50 @@ defmodule Goth.ConfigTest do
     current_json = Application.get_env(:goth, :json)
     Application.put_env(:goth, :json, nil, persistent: true)
     System.put_env("GOOGLE_APPLICATION_CREDENTIALS",
-                   "config/test-credentials.json")
+                   "test/data/test-credentials-2.json")
     Application.stop(:goth)
 
     Application.start(:goth)
-    state = "config/test-credentials.json" |> Path.expand |> File.read! |> Poison.decode!
+    state = "test/data/test-credentials-2.json" |> Path.expand |> File.read! |> Poison.decode!
     state |> Map.keys |> Enum.each(fn(key) ->
       assert {:ok, state[key]} == Config.get(key)
     end)
-    assert {:ok, :oauth} == Config.get(:token_source)
+    assert {:ok, :oauth_jwt} == Config.get(:token_source)
 
     # Restore original config
     Application.put_env(:goth, :json, current_json, persistent: true)
     System.delete_env("GOOGLE_APPLICATION_CREDENTIALS")
+    Application.stop(:goth)
+    Application.start(:goth)
+  end
+
+  test "gcloud default credentials are found", %{bypass: bypass} do
+    # The test configuration sets an example JSON blob. We override it briefly
+    # during this test.
+    current_json = Application.get_env(:goth, :json)
+    current_home = Application.get_env(:goth, :config_root_dir)
+    Application.put_env(:goth, :json, nil, persistent: true)
+    Application.put_env(:goth, :config_root_dir, "test/data/home", persistent: true)
+    Application.stop(:goth)
+
+    # Fake project response because the ADC doesn't embed a project.
+    project = "test-project"
+    Bypass.expect(bypass, fn(conn) ->
+      uri = "/computeMetadata/v1/project/project-id"
+      assert(conn.request_path == uri, "Goth should ask for project ID")
+      Plug.Conn.resp(conn, 200, project)
+    end)
+
+    Application.start(:goth)
+    state = "test/data/home/gcloud/application_default_credentials.json" |> Path.expand |> File.read! |> Poison.decode!
+    state |> Map.keys |> Enum.each(fn(key) ->
+      assert {:ok, state[key]} == Config.get(key)
+    end)
+    assert {:ok, :oauth_refresh} == Config.get(:token_source)
+
+    # Restore original config
+    Application.put_env(:goth, :json, current_json, persistent: true)
+    Application.put_env(:goth, :config_root_dir, current_home, persistent: true)
     Application.stop(:goth)
     Application.start(:goth)
   end

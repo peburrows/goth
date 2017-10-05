@@ -25,6 +25,7 @@ defmodule Goth.Config do
     config = from_json() ||
              from_config() ||
              from_creds_file() ||
+             from_gcloud_adc() ||
              from_metadata()
     project_id = determine_project_id(config)
     {:ok, Map.put(config, "project_id", project_id)}
@@ -49,6 +50,30 @@ defmodule Goth.Config do
     end
   end
 
+  # Search the well-known path for application default credentials provided
+  # by the gcloud sdk. Note there are different paths for unix and windows.
+  defp from_gcloud_adc() do
+    config_root_dir = Application.get_env(:goth, :config_root_dir)
+    path_root = if config_root_dir == nil do
+      case :os.type() do
+        {:win32, _} ->
+          System.get_env("APPDATA") || ""
+        {:unix, _} ->
+          home_dir = System.get_env("HOME") || ""
+          Path.join([home_dir, ".config"])
+      end
+    else
+      config_root_dir
+    end
+
+    path = Path.join([path_root, "gcloud", "application_default_credentials.json"])
+    if File.regular?(path) do
+      path |> File.read!() |> decode_json()
+    else
+      nil
+    end
+  end
+
   defp from_metadata() do
     %{"token_source" => :metadata}
   end
@@ -66,7 +91,14 @@ defmodule Goth.Config do
   defp decode_json(json) do
     json
     |> Poison.decode!
-    |> Map.put("token_source", :oauth)
+    |> set_token_source
+  end
+
+  defp set_token_source(map = %{"private_key" => _}) do
+    Map.put(map, "token_source", :oauth_jwt)
+  end
+  defp set_token_source(map = %{"refresh_token" => _, "client_id" => _, "client_secret" => _}) do
+    Map.put(map, "token_source", :oauth_refresh)
   end
 
   def set(key, value) when is_atom(key), do: key |> to_string |> set(value)
