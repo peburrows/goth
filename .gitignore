@@ -5,4 +5,3 @@
 erl_crash.dump
 *.ez
 /config/*credentials*
-!/config/test-credentials.json

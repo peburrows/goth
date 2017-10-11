@@ -31,7 +31,7 @@ defmodule Goth.ClientTest do
     assert {:ok, _obj} = Poison.decode(json)
   end
 
-  test "we call the API with the correct data and generate a token", %{bypass: bypass} do
+  test "we call the API with the correct jwt data and generate a token", %{bypass: bypass} do
     token_response = %{
       "access_token" => "1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M",
       "token_type"   => "Bearer",
@@ -67,6 +67,45 @@ defmodule Goth.ClientTest do
     generated = Client.claims(scope, claims["iat"])
 
     assert ^generated = claims
+  end
+
+  test "we call the API with the correct refresh data and generate a token", %{bypass: bypass} do
+    # Set up a temporary config with a refresh token
+    normal_json = Application.get_env(:goth, :json)
+    refresh_json = "test/data/home/gcloud/application_default_credentials.json" |> Path.expand |> File.read!
+    Application.put_env(:goth, :json, refresh_json, persistent: true)
+    Application.stop(:goth)
+    Application.start(:goth)
+
+    token_response = %{
+      "access_token" => "1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M",
+      "token_type"   => "Bearer",
+      "expires_in"   => 3600
+    }
+
+    scope = "prediction"
+
+    Bypass.expect bypass, fn conn ->
+      assert "/oauth2/v4/token" == conn.request_path
+      assert "POST"             == conn.method
+
+      {:ok, body, _conn} = Plug.Conn.read_body(conn)
+      assert body =~ ~r/refresh_token=refreshrefreshrefresh/
+
+      Plug.Conn.resp(conn, 201, Poison.encode!(token_response))
+    end
+
+    {:ok, data} = Client.get_access_token(scope)
+
+    at = token_response["access_token"]
+    tt = token_response["token_type"]
+
+    assert %Token{token: ^at, type: ^tt, expires: _exp} = data
+
+    # Restore original config
+    Application.put_env(:goth, :json, normal_json, persistent: true)
+    Application.stop(:goth)
+    Application.start(:goth)
   end
 
   test "We call the metadata service correctly and decode the token", %{bypass: bypass} do

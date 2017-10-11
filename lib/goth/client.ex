@@ -39,11 +39,32 @@ defmodule Goth.Client do
   end
 
   # Fetch an access token from Google's OAuth service using a JWT
-  def get_access_token(:oauth, scope) do
+  def get_access_token(:oauth_jwt, scope) do
     endpoint = Application.get_env(:goth, :endpoint, "https://www.googleapis.com")
     url      = "#{endpoint}/oauth2/v4/token"
     body     = {:form, [grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
                         assertion:  jwt(scope)]}
+    headers  = [{"Content-Type", "application/x-www-form-urlencoded"}]
+
+    {:ok, response} = HTTPoison.post(url, body, headers)
+    if response.status_code >= 200 && response.status_code < 300 do
+      {:ok, Token.from_response_json(scope, response.body)}
+    else
+      {:error, "Could not retrieve token, response: #{response.body}"}
+    end
+  end
+
+  # Fetch an access token from Google's OAuth service using a refresh token
+  def get_access_token(:oauth_refresh, scope) do
+    {:ok, refresh_token} = Config.get(:refresh_token)
+    {:ok, client_id} = Config.get(:client_id)
+    {:ok, client_secret} = Config.get(:client_secret)
+    endpoint = Application.get_env(:goth, :endpoint, "https://www.googleapis.com")
+    url      = "#{endpoint}/oauth2/v4/token"
+    body     = {:form, [grant_type: "refresh_token",
+                        refresh_token: refresh_token,
+                        client_id: client_id,
+                        client_secret: client_secret]}
     headers  = [{"Content-Type", "application/x-www-form-urlencoded"}]
 
     {:ok, response} = HTTPoison.post(url, body, headers)
