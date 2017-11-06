@@ -79,12 +79,27 @@ defmodule Goth.Config do
   end
 
   defp determine_project_id(config) do
-    Application.get_env(:goth, :project_id) ||
-      System.get_env("GOOGLE_CLOUD_PROJECT") ||
-      System.get_env("GCLOUD_PROJECT") ||
-      System.get_env("DEVSHELL_PROJECT_ID") ||
-      config["project_id"] ||
-      Client.retrieve_metadata_project()
+    case Application.get_env(:goth, :project_id) || System.get_env("GOOGLE_CLOUD_PROJECT") ||
+           System.get_env("GCLOUD_PROJECT") || System.get_env("DEVSHELL_PROJECT_ID") ||
+           config["project_id"] do
+      nil ->
+        try do
+          Client.retrieve_metadata_project()
+        rescue
+          e in HTTPoison.Error ->
+            case e do
+              %HTTPoison.Error{reason: :nxdomain} ->
+                raise " Failed to retrieve project data from GCE internal metadata service.
+                   Either you haven't configured your GCP credentials, you aren't running on GCE, or both."
+
+              _ ->
+                e
+            end
+        end
+
+      project_id ->
+        project_id
+    end
   end
 
   # Decodes JSON (if configured) and sets oauth token source
