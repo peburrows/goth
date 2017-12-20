@@ -78,13 +78,18 @@ defmodule Goth.Client do
   def claims(scope), do: claims(scope, :os.system_time(:seconds))
   def claims(scope, iat) do
     {:ok, email} = Config.get(:client_email)
-    %{
-      "iss"   => email,
-      "scope" => scope,
-      "aud"   => "https://www.googleapis.com/oauth2/v4/token",
-      "iat"   => iat,
-      "exp"   => iat+10
-    }
+    c =
+      %{
+        "iss"   => email,
+        "scope" => scope,
+        "aud"   => "https://www.googleapis.com/oauth2/v4/token",
+        "iat"   => iat,
+        "exp"   => iat+10
+      }
+    case Config.get(:actor_email) do
+      {:ok, sub} -> Map.put(c, "sub", sub)
+      _ -> c
+    end
   end
 
   def json(scope), do: json(scope, :os.system_time(:seconds))

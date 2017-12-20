@@ -28,13 +28,21 @@ It can either retrieve tokens using service account credentials or from Google's
   config :goth,
     json: "path/to/google/json/creds.json" |> File.read!
   ```
-  
+
   Or, via an ENV var:
   ```elixir
   config :goth, json: {:system, "GCP_CREDENTIALS"}
   ```
 
 You can skip the last step if your application will run on a GCP or GKE instance with appropriate permissions.
+
+If you need to set the email account to impersonate. For example when using service accounts
+
+   ```elixir
+   config :goth,
+     json: {:system, "GCP_CREDENTIALS"},
+     actor_email: "some-email@your-domain.com"
+   ```
 
 ## Usage
 

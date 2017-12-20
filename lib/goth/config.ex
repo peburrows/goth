@@ -28,7 +28,12 @@ defmodule Goth.Config do
              from_gcloud_adc() ||
              from_metadata()
     project_id = determine_project_id(config)
-    {:ok, Map.put(config, "project_id", project_id)}
+    actor_email = Application.get_env(:goth, :actor_email)
+    config =
+      config
+      |> Map.put("project_id", project_id)
+      |> Map.put("actor_email", actor_email)
+    {:ok, config}
   end
 
   defp from_json() do
