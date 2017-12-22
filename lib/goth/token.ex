@@ -44,6 +44,9 @@ defmodule Goth.Token do
   Get a `%Goth.Token{}` for a particular `scope`. `scope` can be a single
   scope or multiple scopes joined by a space.
 
+  `sub` needs to be specified if impersonation is used to prevent cache
+  leaking between users.
+
   ## Example
       iex> Token.for_scope("https://www.googleapis.com/auth/pubsub")
       {:ok, %Goth.Token{expires: ..., token: "...", type: "..."} }

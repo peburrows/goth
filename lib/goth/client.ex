@@ -6,6 +6,19 @@ defmodule Goth.Client do
   `Goth.Client` is the module through which all interaction with Google's APIs flows.
   For the most part, you probably don't want to use this module directly, but instead
   use the other modules that cache and wrap the underlying API calls.
+
+  ## Available Options
+
+  Additional token attributes are controlled through options. Available values:
+
+  - `iat` - The time the assertion was issued, default to now.
+  - `sub` - The email address of the user for which the application is requesting delegated access.
+    Default values is taken from the config `:actor_email`.
+
+  See
+  [Google's Documentation](https://developers.google.com/identity/protocols/OAuth2ServiceAccount#authorizingrequests)
+  for more details.
+
   """
 
   @doc """
@@ -24,6 +37,7 @@ defmodule Goth.Client do
     get_access_token(token_source, scope, opts)
   end
 
+  @doc false
   def get_access_token(source, scope, opts \\ [])
   # Fetch an access token from Google's metadata service for applications running
   # on Google's Cloud platform.
