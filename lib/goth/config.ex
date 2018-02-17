@@ -7,7 +7,7 @@ defmodule Goth.Config do
   2. a ENV variable passed in via your application's config
   3. The Application Default Credentials, as defined by
      https://developers.google.com/identity/protocols/application-default-credentials
-  4. an `c:init/1` callback on a custom config module. This init function is
+  4. an `init/1` callback on a custom config module. This init function is
      passed the current config and must return an `{:ok, config}` tuple
 
   The `Goth.Config` server exists mostly for other parts of your application
@@ -35,7 +35,7 @@ defmodule Goth.Config do
   application environment. It must return `{:ok, keyword}` with the updated
   list of configuration.
 
-  To have your module's `c:init/1` callback called at startup, add your module
+  To have your module's `init/1` callback called at startup, add your module
   as the `:config_module` in the application environment:
 
       config :goth, config_module: MyConfig
