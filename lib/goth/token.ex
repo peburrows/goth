@@ -34,23 +34,27 @@ defmodule Goth.Token do
                     token: String.t,
                     type:  String.t,
                     scope: String.t,
+                    sub:   String.t,
                     expires: non_neg_integer
                   }
 
-  defstruct [:token, :type, :scope, :expires]
+  defstruct [:token, :type, :scope, :sub, :expires]
 
   @doc """
   Get a `%Goth.Token{}` for a particular `scope`. `scope` can be a single
   scope or multiple scopes joined by a space.
 
+  `sub` needs to be specified if impersonation is used to prevent cache
+  leaking between users.
+
   ## Example
       iex> Token.for_scope("https://www.googleapis.com/auth/pubsub")
       {:ok, %Goth.Token{expires: ..., token: "...", type: "..."} }
   """
-  @spec for_scope(String.t) :: {:ok, t} | :error
-  def for_scope(scope) do
-    case TokenStore.find(scope) do
-      :error       -> retrieve_and_store!(scope)
+  @spec for_scope(String.t, String.t) :: {:ok, t} | :error
+  def for_scope(scope, sub \\ nil) do
+    case TokenStore.find(scope, sub) do
+      :error       -> retrieve_and_store!(scope, sub)
       {:ok, token} -> {:ok, token}
     end
   end
@@ -58,13 +62,14 @@ defmodule Goth.Token do
   @doc """
   Parse a successful JSON response from Google's token API and extract a `%Goth.Token{}`
   """
-  @spec from_response_json(String.t, String.t) :: t
-  def from_response_json(scope, json) do
+  @spec from_response_json(String.t, String.t, String.t) :: t
+  def from_response_json(scope, sub \\ nil, json) do
     {:ok, attrs} = json |> Poison.decode
     %__MODULE__{
       token:   attrs["access_token"],
       type:    attrs["token_type"],
       scope:   scope,
+      sub:     sub,
       expires: :os.system_time(:seconds) + attrs["expires_in"]
     }
   end
@@ -75,8 +80,9 @@ defmodule Goth.Token do
   rarely if ever actually need to call this method manually.
   """
   @spec refresh!(t | String.t) :: {:ok, t}
+  def refresh!(%__MODULE__{scope: scope, sub: sub}), do: refresh!(scope, sub)
   def refresh!(%__MODULE__{scope: scope}), do: refresh!(scope)
-  def refresh!(scope), do: retrieve_and_store!(scope)
+  def refresh!(scope, sub \\ nil), do: retrieve_and_store!(scope, sub)
 
   def queue_for_refresh(%__MODULE__{}=token) do
     diff = token.expires - :os.system_time(:seconds)
@@ -90,9 +96,9 @@ defmodule Goth.Token do
     end
   end
 
-  defp retrieve_and_store!(scope) do
-    {:ok, token} = Client.get_access_token(scope)
-    TokenStore.store(scope, token)
+  defp retrieve_and_store!(scope, sub) do
+    {:ok, token} = Client.get_access_token(scope, sub: sub)
+    TokenStore.store(scope, sub, token)
     {:ok, token}
   end
 end

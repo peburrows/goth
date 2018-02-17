@@ -18,6 +18,16 @@ defmodule Goth.TokenTest do
     } = Token.from_response_json("scope", json)
   end
 
+  test "it can generate from response JSON with sub" do
+    json = ~s({"token_type":"Bearer","expires_in":3600,"access_token":"1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M"})
+    assert %Token{
+      token: "1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M",
+      type: "Bearer",
+      sub: "sub@example.com",
+      expires: _exp
+    } = Token.from_response_json("scope", "sub@example.com", json)
+  end
+
   test "it calculates the expiration from the expires_in attr" do
     json = ~s({"token_type":"Bearer","expires_in":3600,"access_token":"1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M"})
     token = Token.from_response_json("my-scope", json)
@@ -30,6 +40,7 @@ defmodule Goth.TokenTest do
     end
 
      assert {:ok, %Token{token: "123"}} = Token.for_scope("random")
+     assert {:ok, %Token{token: "123"}} = Token.for_scope("random", "sub@example.com")
   end
 
   test "it will pull a token from the token store if cached", %{bypass: bypass} do
@@ -43,6 +54,23 @@ defmodule Goth.TokenTest do
     Bypass.down(bypass)
 
     assert {:ok, %Token{token: ^access_token}} = Token.for_scope("another-random")
+  end
+
+  test "it will pull a token from the token store if cached when sub is provided", %{bypass: bypass} do
+    Bypass.expect bypass, fn conn ->
+      Plug.Conn.resp(conn, 201, Poison.encode!(%{"access_token" => "123", "token_type" => "Bearer", "expires_in" => 3600}))
+    end
+
+    assert {:ok, %Token{token: access_token}} = Token.for_scope("another-random-sub", "sub@example.com")
+    assert access_token != nil
+
+    Bypass.expect bypass, fn conn ->
+      Plug.Conn.resp(conn, 201, Poison.encode!(%{"access_token" => "123-sub", "token_type" => "Bearer", "expires_in" => 3600}))
+    end
+
+    assert {:ok, %Token{token: ^access_token}} = Token.for_scope("another-random-sub", "sub@example.com")
+    {:ok, %Token{token: access_token_2}} = Token.for_scope("another-random-sub")
+    assert access_token != access_token_2
   end
 
   test "refreshing a token hits the API", %{bypass: bypass} do
