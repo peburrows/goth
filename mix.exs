@@ -3,7 +3,7 @@ defmodule Goth.Mixfile do
 
   def project do
     [app: :goth,
-     version: "0.7.2",
+     version: "0.8.0",
      description: description(),
      package: package(),
      elixirc_paths: elixirc_paths(Mix.env),
