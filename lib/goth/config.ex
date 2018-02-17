@@ -36,7 +36,9 @@ defmodule Goth.Config do
   # and pass it along to each config function
 
   def init(:ok) do
-    {:ok, dynamic_config} = config_mod_init(Application.get_all_env(:goth))
+    {:ok, dynamic_config} =
+      Application.get_all_env(:goth)
+      |> config_mod_init
 
     config = from_json(dynamic_config) ||
              from_config(dynamic_config) ||
@@ -52,8 +54,7 @@ defmodule Goth.Config do
     {:ok, config}
   end
 
-  # this requires
-  def config_mod_init(config) do
+  defp config_mod_init(config) do
     case Keyword.get(config, :config_module) do
       nil -> {:ok, config}
       mod ->

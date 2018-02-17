@@ -6,6 +6,7 @@ defmodule Goth.Mixfile do
      version: "0.7.2",
      description: description(),
      package: package(),
+     elixirc_paths: elixirc_paths(Mix.env),
      elixir: "~> 1.4",
      deps: deps()]
   end
@@ -16,6 +17,9 @@ defmodule Goth.Mixfile do
       applications: [:json_web_token, :logger, :httpoison]
     ]
   end
+
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
 
   defp deps do
     [{:json_web_token, "~> 0.2.10"},
