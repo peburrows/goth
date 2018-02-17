@@ -12,18 +12,11 @@ It can either retrieve tokens using service account credentials or from Google's
 1. Add Goth to your list of dependencies in `mix.exs`:
   ```elixir
   def deps do
-    [{:goth, "~> 0.4.0"}]
+    [{:goth, "~> 0.8.0"}]
   end
   ```
 
-2. Ensure Goth is started before your application:
-  ```elixir
-  def application do
-    [applications: [:goth]]
-  end
-  ```
-
-3. Pass in your credentials json downloaded from your GCE account:
+2. Pass in your credentials json downloaded from your GCE account:
   ```elixir
   config :goth,
     json: "path/to/google/json/creds.json" |> File.read!
@@ -33,16 +26,37 @@ It can either retrieve tokens using service account credentials or from Google's
   ```elixir
   config :goth, json: {:system, "GCP_CREDENTIALS"}
   ```
+  
+  Or, via your own config module:
+  ```elixir
+  config :goth, config_module: MyConfigMod
+  ```
+  ```elixir
+  defmodule MyConfigMod do
+    use Goth.Config
+    
+    def init(config) do
+      {:ok, Keyword.put(config, :json, System.get_env("MY_GCP_JSON_CREDENTIALS"))}
+    end
+  end
+  ```
 
 You can skip the last step if your application will run on a GCP or GKE instance with appropriate permissions.
 
 If you need to set the email account to impersonate. For example when using service accounts
 
-   ```elixir
-   config :goth,
-     json: {:system, "GCP_CREDENTIALS"},
-     actor_email: "some-email@your-domain.com"
-   ```
+  ```elixir
+  config :goth,
+    json: {:system, "GCP_CREDENTIALS"},
+    actor_email: "some-email@your-domain.com"
+  ```
+
+Alternatively, you can pass your sub email on a per-call basis, for example:
+  
+  ```elixir
+  Goth.Token.for_scope("https://www.googleapis.com/auth/pubsub", 
+                       "some-email@your-domain.com")
+  ```
 
 ## Usage
 
