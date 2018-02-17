@@ -26,6 +26,41 @@ defmodule Goth.ClientTest do
     } = Client.claims(scope)
   end
 
+  test "iat is support in the JWT" do
+    {:ok, email} = Goth.Config.get(:client_email)
+    iat = :os.system_time(:seconds) + 20
+    exp = iat + 10
+    scope = "prediction"
+
+    token = %{
+      "iss"   => email,
+      "scope" => scope,
+      "aud"   => "https://www.googleapis.com/oauth2/v4/token",
+      "iat"   => iat,
+      "exp"   => exp
+    }
+
+    assert token == Client.claims(scope, iat)
+    assert token == Client.claims(scope, iat: iat)
+  end
+
+  test "sub is support in the JWT" do
+    {:ok, email} = Goth.Config.get(:client_email)
+    iat = :os.system_time(:seconds) + 30
+    exp = iat + 10
+    scope = "prediction"
+    sub = "sub@example.com"
+
+    assert %{
+      "iss"   => ^email,
+      "scope" => ^scope,
+      "aud"   => "https://www.googleapis.com/oauth2/v4/token",
+      "iat"   => ^iat,
+      "sub"   => ^sub,
+      "exp"   => ^exp
+    } = Client.claims(scope, iat: iat, sub: sub)
+  end
+
   test "the claims json generated is legit" do
     json = Client.json("prediction")
     assert {:ok, _obj} = Poison.decode(json)

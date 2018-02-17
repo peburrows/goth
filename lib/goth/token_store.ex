@@ -19,9 +19,10 @@ defmodule Goth.TokenStore do
   to be refreshed ten seconds before its expiration.
   """
   @spec store(Token.t) :: pid
-  def store(%Token{}=token), do: store(token.scope, token)
-  def store(scopes, %Token{} = token) do
-    GenServer.call(__MODULE__, {:store, scopes, token})
+  def store(%Token{}=token), do: store(token.scope, token.sub, token)
+  def store(scopes, %Token{} = token), do: store(scopes, token.sub, token)
+  def store(scopes, sub, %Token{} = token) do
+    GenServer.call(__MODULE__, {:store, {scopes, sub}, token})
   end
 
   @doc ~S"""
@@ -34,28 +35,28 @@ defmodule Goth.TokenStore do
       Goth.TokenStore.store(token)
       {:ok, ^token} = Goth.TokenStore.find(token.scope)
   """
-  @spec find(String.t) :: {:ok, Token.t} | :error
-  def find(scope) do
-    GenServer.call(__MODULE__, {:find, scope})
+  @spec find(String.t, String.t) :: {:ok, Token.t} | :error
+  def find(scope, sub \\ nil) do
+    GenServer.call(__MODULE__, {:find, {scope, sub}})
   end
 
   # when we store a token, we should refresh it later
-  def handle_call({:store, scope, token}, _from, state) do
+  def handle_call({:store, {scope, sub}, token}, _from, state) do
     # this is a race condition when inserting an expired (or about to expire) token...
     pid_or_timer = Token.queue_for_refresh(token)
-    {:reply, pid_or_timer, Map.put(state, scope, token)}
+    {:reply, pid_or_timer, Map.put(state, {scope, sub}, token)}
   end
 
-  def handle_call({:find, scope}, _from, state) do
+  def handle_call({:find, {scope, sub}}, _from, state) do
     state
-    |> Map.fetch(scope)
+    |> Map.fetch({scope, sub})
     |> filter_expired(:os.system_time(:seconds))
-    |> reply(state, scope)
+    |> reply(state, {scope, sub})
   end
 
   defp filter_expired(:error, _), do: :error
   defp filter_expired({:ok, %Goth.Token{expires: expires}}, system_time) when expires < system_time, do: :error
   defp filter_expired(value, _), do: value
-  defp reply(:error, state, scope), do: {:reply, :error, Map.delete(state, scope)}
-  defp reply(value, state, _scope), do: {:reply, value, state}
+  defp reply(:error, state, {scope, sub}), do: {:reply, :error, Map.delete(state, {scope, sub})}
+  defp reply(value, state, _key), do: {:reply, value, state}
 end

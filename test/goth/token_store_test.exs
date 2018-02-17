@@ -18,7 +18,7 @@ defmodule Goth.TokenStoreTest do
   end
 
   test "a token is queued for refresh when stored" do
-    token = %Token{scope: "will-be-stale", token: "stale", type: "Bearer", expires: :os.system_time(:seconds)+1000}
+    token = %Token{scope: "will-be-stale", token: "stale", type: "Bearer", sub: "sub@example.com", expires: :os.system_time(:seconds)+1000}
 
     # if queued for later, we'll get back a reference
     {:ok, {_id, ref}} = TokenStore.store(token)
@@ -43,5 +43,25 @@ defmodule Goth.TokenStoreTest do
     token = %Token{scope: "expired", token: "stale", type: "Bearer", expires: 1}
     {:ok, _pid} = GenServer.start_link(Goth.TokenStore,%{"expired" => token})
     assert :error = TokenStore.find("expired")
+  end
+
+  test "token can be stored with sub" do
+    sub = "sub@example.com"
+    TokenStore.store("devstorage.readonly, prediction", %Token{token: "123", type: "Bearer", sub: sub, expires: :os.system_time(:seconds)+1000})
+    {:ok, token} = TokenStore.find("devstorage.readonly, prediction", sub)
+    assert %Token{token: "123", type: "Bearer", sub: _} = token
+    assert token.expires > :os.system_time(:seconds) + 900
+  end
+
+  test "tokens with the same scope but different sub are stored seperately" do
+    scopes = "devstorage.readonly, prediction, drive.readonly"
+    sub1 = "sub1@example.com"
+    sub2 = "sub2@example.com"
+    TokenStore.store(scopes, %Token{token: "123", type: "Bearer", sub: sub1, expires: :os.system_time(:seconds)+1000})
+    TokenStore.store(scopes, %Token{token: "123", type: "Bearer", sub: sub2, expires: :os.system_time(:seconds)+1000})
+    assert :error == TokenStore.find(scopes)
+    {:ok, token1} = TokenStore.find(scopes, sub1)
+    {:ok, token2} = TokenStore.find(scopes, sub2)
+    assert token1 != token2
   end
 end

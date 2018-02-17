@@ -149,4 +149,16 @@ defmodule Goth.ConfigTest do
     Application.stop(:goth)
     Application.start(:goth)
   end
+
+  test "the config_module is allowed to override config" do
+    Application.put_env(:goth, :config_module, Goth.TestConfigMod)
+    Application.stop(:goth)
+
+    Application.start(:goth)
+    assert {:ok, :val} == Goth.Config.get(:actor_email)
+
+    Application.delete_env(:goth, :config_module)
+    Application.stop(:goth)
+    Application.start(:goth)
+  end
 end

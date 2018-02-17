@@ -1,12 +1,14 @@
 defmodule Goth.Config do
   @moduledoc """
   `Goth.Config` is a `GenServer` that holds the current configuration.
-  This configuration is loaded from one of three places:
+  This configuration is loaded from one of four places:
 
   1. a JSON string passed in via your application's config
   2. a ENV variable passed in via your application's config
   3. The Application Default Credentials, as defined by
      https://developers.google.com/identity/protocols/application-default-credentials
+  4. an `c:init/1` callback on a custom config module. This init function is
+     passed the current config and must return an `{:ok, config}` tuple
 
   The `Goth.Config` server exists mostly for other parts of your application
   (or other libraries) to pull the current configuration state,
@@ -17,18 +19,45 @@ defmodule Goth.Config do
   use GenServer
   alias Goth.Client
 
+  # this using macro isn't actually necessary,
+  defmacro __using__(_opts) do
+    quote do
+      @behaviour Goth.Config
+    end
+  end
+
+  @optional_callbacks init: 1
+
+  @doc """
+  A callback executed when the Goth.Config server starts.
+
+  The sole argument is the `:goth` configuration as stored in the
+  application environment. It must return `{:ok, keyword}` with the updated
+  list of configuration.
+
+  To have your module's `c:init/1` callback called at startup, add your module
+  as the `:config_module` in the application environment:
+
+      config :goth, config_module: MyConfig
+  """
+  @callback init(config :: Keyword.t) :: {:ok, Keyword.t}
+
   def start_link do
     GenServer.start_link(__MODULE__, :ok, [name: __MODULE__])
   end
 
   def init(:ok) do
-    config = from_json() ||
-             from_config() ||
-             from_creds_file() ||
-             from_gcloud_adc() ||
-             from_metadata()
-    project_id = determine_project_id(config)
-    actor_email = Application.get_env(:goth, :actor_email)
+    {:ok, dynamic_config} =
+      Application.get_all_env(:goth)
+      |> config_mod_init
+
+    config = from_json(dynamic_config) ||
+             from_config(dynamic_config) ||
+             from_creds_file(dynamic_config) ||
+             from_gcloud_adc(dynamic_config) ||
+             from_metadata(dynamic_config)
+    actor_email = Keyword.get(dynamic_config, :actor_email)
+    project_id = determine_project_id(config, dynamic_config)
     config =
       config
       |> Map.put("project_id", project_id)
@@ -36,19 +65,31 @@ defmodule Goth.Config do
     {:ok, config}
   end
 
-  defp from_json() do
-    case Application.get_env(:goth, :json) do
+  defp config_mod_init(config) do
+    case Keyword.get(config, :config_module) do
+      nil -> {:ok, config}
+      mod ->
+        if Code.ensure_loaded?(mod) and function_exported?(mod, :init, 1) do
+          mod.init(config)
+        else
+          {:ok, config}
+        end
+    end
+  end
+
+  defp from_json(config) do
+    case Keyword.get(config, :json) do
       nil -> nil
       {:system, var} -> decode_json(System.get_env(var))
       json -> decode_json(json)
     end
   end
 
-  defp from_config() do
-    Application.get_env(:goth, :config)
+  defp from_config(config) do
+    Keyword.get(config, :config)
   end
 
-  defp from_creds_file() do
+  defp from_creds_file(_config) do
     case System.get_env("GOOGLE_APPLICATION_CREDENTIALS") do
       nil -> nil
       filename -> filename |> File.read!() |> decode_json()
@@ -57,8 +98,9 @@ defmodule Goth.Config do
 
   # Search the well-known path for application default credentials provided
   # by the gcloud sdk. Note there are different paths for unix and windows.
-  defp from_gcloud_adc() do
-    config_root_dir = Application.get_env(:goth, :config_root_dir)
+  defp from_gcloud_adc(config) do
+    # config_root_dir = Application.get_env(:goth, :config_root_dir)
+    config_root_dir = Keyword.get(config, :config_root_dir)
     path_root = if config_root_dir == nil do
       case :os.type() do
         {:win32, _} ->
@@ -79,12 +121,12 @@ defmodule Goth.Config do
     end
   end
 
-  defp from_metadata() do
+  defp from_metadata(_config) do
     %{"token_source" => :metadata}
   end
 
-  defp determine_project_id(config) do
-    case Application.get_env(:goth, :project_id) || System.get_env("GOOGLE_CLOUD_PROJECT") ||
+  defp determine_project_id(config, dynamic_config) do
+    case Keyword.get(dynamic_config, :project_id) || System.get_env("GOOGLE_CLOUD_PROJECT") ||
            System.get_env("GCLOUD_PROJECT") || System.get_env("DEVSHELL_PROJECT_ID") ||
            config["project_id"] do
       nil ->
@@ -122,11 +164,19 @@ defmodule Goth.Config do
     Map.put(map, "token_source", :oauth_refresh)
   end
 
+  @doc """
+  Set a value in the config.
+  """
+  @spec set(String.t | Atom.t, any()) :: :ok
   def set(key, value) when is_atom(key), do: key |> to_string |> set(value)
   def set(key, value) do
     GenServer.call(__MODULE__, {:set, key, value})
   end
 
+  @doc """
+  Retrieve a value from the config.
+  """
+  @spec get(String.t | Atom.t) :: {:ok, any()} | :error
   def get(key) when is_atom(key), do: key |> to_string |> get
   def get(key) do
     GenServer.call(__MODULE__, {:get, key})
