@@ -20,7 +20,9 @@ defmodule Goth.TokenStore do
   """
   @spec store(Token.t) :: pid
   def store(%Token{}=token), do: store(token.scope, token.sub, token)
+  @spec store(scopes :: String.t, token :: Token.t) :: pid
   def store(scopes, %Token{} = token), do: store(scopes, token.sub, token)
+  @spec store(scopes :: String.t(), sub :: String.t() | nil, token :: Token.t) :: pid
   def store(scopes, sub, %Token{} = token) do
     GenServer.call(__MODULE__, {:store, {scopes, sub}, token})
   end
@@ -35,7 +37,7 @@ defmodule Goth.TokenStore do
       Goth.TokenStore.store(token)
       {:ok, ^token} = Goth.TokenStore.find(token.scope)
   """
-  @spec find(String.t, String.t) :: {:ok, Token.t} | :error
+  @spec find(scope :: String.t, sub :: String.t | nil) :: {:ok, Token.t} | :error
   def find(scope, sub \\ nil) do
     GenServer.call(__MODULE__, {:find, {scope, sub}})
   end
