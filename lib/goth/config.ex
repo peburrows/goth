@@ -167,7 +167,7 @@ defmodule Goth.Config do
   @doc """
   Set a value in the config.
   """
-  @spec set(String.t | Atom.t, any()) :: :ok
+  @spec set(String.t | atom, any()) :: :ok
   def set(key, value) when is_atom(key), do: key |> to_string |> set(value)
   def set(key, value) do
     GenServer.call(__MODULE__, {:set, key, value})
@@ -176,7 +176,7 @@ defmodule Goth.Config do
   @doc """
   Retrieve a value from the config.
   """
-  @spec get(String.t | Atom.t) :: {:ok, any()} | :error
+  @spec get(String.t | atom) :: {:ok, any()} | :error
   def get(key) when is_atom(key), do: key |> to_string |> get
   def get(key) do
     GenServer.call(__MODULE__, {:get, key})
