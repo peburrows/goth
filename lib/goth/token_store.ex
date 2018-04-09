@@ -42,6 +42,10 @@ defmodule Goth.TokenStore do
     GenServer.call(__MODULE__, {:find, {scope, sub}})
   end
 
+  def init(state) do
+    {:ok, state}
+  end
+
   # when we store a token, we should refresh it later
   def handle_call({:store, {scope, sub}, token}, _from, state) do
     # this is a race condition when inserting an expired (or about to expire) token...
