@@ -34,7 +34,7 @@ defmodule Goth.Token do
                     token: String.t,
                     type:  String.t,
                     scope: String.t,
-                    sub:   String.t,
+                    sub:   String.t | nil,
                     expires: non_neg_integer
                   }
 
@@ -51,7 +51,7 @@ defmodule Goth.Token do
       iex> Token.for_scope("https://www.googleapis.com/auth/pubsub")
       {:ok, %Goth.Token{expires: ..., token: "...", type: "..."} }
   """
-  @spec for_scope(String.t, String.t) :: {:ok, t} | :error
+  @spec for_scope(scope :: String.t, sub :: String.t | nil) :: {:ok, t}
   def for_scope(scope, sub \\ nil) do
     case TokenStore.find(scope, sub) do
       :error       -> retrieve_and_store!(scope, sub)
@@ -62,7 +62,7 @@ defmodule Goth.Token do
   @doc """
   Parse a successful JSON response from Google's token API and extract a `%Goth.Token{}`
   """
-  @spec from_response_json(String.t, String.t, String.t) :: t
+  @spec from_response_json(scope :: String.t, sub :: String.t | nil, json :: String.t) :: t
   def from_response_json(scope, sub \\ nil, json) do
     {:ok, attrs} = json |> Poison.decode
     %__MODULE__{
