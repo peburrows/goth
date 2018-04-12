@@ -4,7 +4,7 @@ defmodule Goth.Mixfile do
   def project do
     [
       app: :goth,
-      version: "0.8.1",
+      version: "0.8.2",
       description: description(),
       package: package(),
       elixirc_paths: elixirc_paths(Mix.env()),
@@ -26,7 +26,7 @@ defmodule Goth.Mixfile do
   defp deps do
     [
       {:json_web_token, "~> 0.2.10"},
-      {:httpoison, "~> 0.11"},
+      {:httpoison, "~> 0.11 or ~> 1.0"},
       {:poison, "~> 2.1 or ~> 3.0"},
       {:bypass, "~> 0.1", only: :test},
       {:mix_test_watch, "~> 0.2", only: :dev},
