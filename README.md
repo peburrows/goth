@@ -17,6 +17,7 @@ It can either retrieve tokens using service account credentials or from Google's
   ```
 
 2. Pass in your credentials json downloaded from your GCE account:
+
   ```elixir
   config :goth,
     json: "path/to/google/json/creds.json" |> File.read!
@@ -26,7 +27,7 @@ It can either retrieve tokens using service account credentials or from Google's
   ```elixir
   config :goth, json: {:system, "GCP_CREDENTIALS"}
   ```
-  
+
   Or, via your own config module:
   ```elixir
   config :goth, config_module: MyConfigMod
@@ -34,12 +35,40 @@ It can either retrieve tokens using service account credentials or from Google's
   ```elixir
   defmodule MyConfigMod do
     use Goth.Config
-    
+
     def init(config) do
       {:ok, Keyword.put(config, :json, System.get_env("MY_GCP_JSON_CREDENTIALS"))}
     end
   end
   ```
+
+You can also use a JSON file containing an array of service accounts to be able to use different identities in your application. Each service
+account will be identified by its ```client_email```, which can be passed to ```Goth.Token.for_scope/1``` to specify which service account to use.
+
+For example, if your JSON file contains the following:
+
+```json
+[
+  {
+    "client_email": "account1@myproject.iam.gserviceaccount.com",
+    ...
+  },
+  {
+    "client_email": "account2@myproject.iam.gserviceaccount.com",
+    ...
+  }
+]
+```
+
+You can use the following to get a token for the second service account:
+
+```elixir
+def get_token do
+  {:ok, token} = Goth.Token.for_scope({
+    "account2@myproject.iam.gserviceaccount.com",
+    "https://www.googleapis.com/auth/cloud-platform.read-only"})
+end
+```
 
 You can skip the last step if your application will run on a GCP or GKE instance with appropriate permissions.
 
@@ -52,9 +81,9 @@ If you need to set the email account to impersonate. For example when using serv
   ```
 
 Alternatively, you can pass your sub email on a per-call basis, for example:
-  
+
   ```elixir
-  Goth.Token.for_scope("https://www.googleapis.com/auth/pubsub", 
+  Goth.Token.for_scope("https://www.googleapis.com/auth/pubsub",
                        "some-email@your-domain.com")
   ```
 

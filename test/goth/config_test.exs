@@ -3,7 +3,7 @@ defmodule Goth.ConfigTest do
   alias Goth.Config
 
   setup do
-    bypass = Bypass.open
+    bypass = Bypass.open()
     bypass_url = "http://localhost:#{bypass.port}"
     Application.put_env(:goth, :metadata_url, bypass_url)
     {:ok, bypass: bypass}
@@ -25,8 +25,11 @@ defmodule Goth.ConfigTest do
   end
 
   test "the initial state is what's passed in from the app config" do
-    state = "test/data/test-credentials.json" |> Path.expand |> File.read! |> Poison.decode!
-    state |> Map.keys |> Enum.each(fn(key) ->
+    state = "test/data/test-credentials.json" |> Path.expand() |> File.read!() |> Poison.decode!()
+
+    state
+    |> Map.keys()
+    |> Enum.each(fn key ->
       assert {:ok, state[key]} == Config.get(key)
     end)
   end
@@ -44,17 +47,24 @@ defmodule Goth.ConfigTest do
 
     # Fake project response
     project = "test-project"
-    Bypass.expect(bypass, fn(conn) ->
+
+    Bypass.expect(bypass, fn conn ->
       uri = "/computeMetadata/v1/project/project-id"
       assert(conn.request_path == uri, "Goth should ask for project ID")
       Plug.Conn.resp(conn, 200, project)
     end)
+
     Application.start(:goth)
 
-    assert({:ok, :metadata} == Config.get(:token_source),
-      "Token source should be Google Cloud metadata")
-    assert({:ok, "test-project"} == Config.get(:project_id),
-      "Config should return project from metadata")
+    assert(
+      {:ok, :metadata} == Config.get(:token_source),
+      "Token source should be Google Cloud metadata"
+    )
+
+    assert(
+      {:ok, "test-project"} == Config.get(:project_id),
+      "Config should return project from metadata"
+    )
 
     # Restore original config
     Application.put_env(:goth, :json, current_json, persistent: true)
@@ -67,16 +77,58 @@ defmodule Goth.ConfigTest do
     # during this test.
     current_json = Application.get_env(:goth, :json)
     Application.put_env(:goth, :json, nil, persistent: true)
-    System.put_env("GOOGLE_APPLICATION_CREDENTIALS",
-                   "test/data/test-credentials-2.json")
+    System.put_env("GOOGLE_APPLICATION_CREDENTIALS", "test/data/test-credentials-2.json")
     Application.stop(:goth)
 
     Application.start(:goth)
-    state = "test/data/test-credentials-2.json" |> Path.expand |> File.read! |> Poison.decode!
-    state |> Map.keys |> Enum.each(fn(key) ->
-      assert {:ok, state[key]} == Config.get(key)
+
+    state =
+      "test/data/test-credentials-2.json"
+      |> Path.expand()
+      |> File.read!()
+      |> Poison.decode!()
+      |> Config.map_config()
+
+    Enum.each(state, fn {_, config} ->
+      Enum.each(config, fn {key, _} ->
+        assert {:ok, config[key]} == Config.get(key)
+      end)
     end)
+
     assert {:ok, :oauth_jwt} == Config.get(:token_source)
+
+    # Restore original config
+    Application.put_env(:goth, :json, current_json, persistent: true)
+    System.delete_env("GOOGLE_APPLICATION_CREDENTIALS")
+    Application.stop(:goth)
+    Application.start(:goth)
+  end
+
+  test "multiple credentials are parsed correctly" do
+    # The test configuration sets an example JSON blob. We override it briefly
+    # during this test.
+    current_json = Application.get_env(:goth, :json)
+    new_json = "test/data/test-multicredentials.json" |> Path.expand() |> File.read!()
+
+    Application.put_env(:goth, :json, new_json, persistent: true)
+    Application.stop(:goth)
+
+    Application.start(:goth)
+
+    state =
+      "test/data/test-multicredentials.json"
+      |> Path.expand()
+      |> File.read!()
+      |> Poison.decode!()
+      |> Config.map_config()
+
+    Enum.each(state, fn {account, config} ->
+      Enum.each(config, fn {key, _} ->
+        assert {:ok, config[key]} == Config.get(account, key)
+      end)
+
+      assert {:ok, :oauth_jwt} == Config.get(account, :token_source)
+    end)
 
     # Restore original config
     Application.put_env(:goth, :json, current_json, persistent: true)
@@ -96,17 +148,27 @@ defmodule Goth.ConfigTest do
 
     # Fake project response because the ADC doesn't embed a project.
     project = "test-project"
-    Bypass.expect(bypass, fn(conn) ->
+
+    Bypass.expect(bypass, fn conn ->
       uri = "/computeMetadata/v1/project/project-id"
       assert(conn.request_path == uri, "Goth should ask for project ID")
       Plug.Conn.resp(conn, 200, project)
     end)
 
     Application.start(:goth)
-    state = "test/data/home/gcloud/application_default_credentials.json" |> Path.expand |> File.read! |> Poison.decode!
-    state |> Map.keys |> Enum.each(fn(key) ->
+
+    state =
+      "test/data/home/gcloud/application_default_credentials.json"
+      |> Path.expand()
+      |> File.read!()
+      |> Poison.decode!()
+
+    state
+    |> Map.keys()
+    |> Enum.each(fn key ->
       assert {:ok, state[key]} == Config.get(key)
     end)
+
     assert {:ok, :oauth_refresh} == Config.get(:token_source)
 
     # Restore original config

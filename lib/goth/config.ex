@@ -40,10 +40,10 @@ defmodule Goth.Config do
 
       config :goth, config_module: MyConfig
   """
-  @callback init(config :: Keyword.t) :: {:ok, Keyword.t}
+  @callback init(config :: Keyword.t()) :: {:ok, Keyword.t()}
 
   def start_link do
-    GenServer.start_link(__MODULE__, :ok, [name: __MODULE__])
+    GenServer.start_link(__MODULE__, :ok, name: __MODULE__)
   end
 
   def init(:ok) do
@@ -51,23 +51,47 @@ defmodule Goth.Config do
       Application.get_all_env(:goth)
       |> config_mod_init
 
-    config = from_json(dynamic_config) ||
-             from_config(dynamic_config) ||
-             from_creds_file(dynamic_config) ||
-             from_gcloud_adc(dynamic_config) ||
-             from_metadata(dynamic_config)
-    actor_email = Keyword.get(dynamic_config, :actor_email)
-    project_id = determine_project_id(config, dynamic_config)
+    config =
+      from_json(dynamic_config) || from_config(dynamic_config) || from_creds_file(dynamic_config) ||
+        from_gcloud_adc(dynamic_config) || from_metadata(dynamic_config)
+
     config =
       config
-      |> Map.put("project_id", project_id)
-      |> Map.put("actor_email", actor_email)
+      |> map_config()
+      |> Enum.map(fn {account, config} ->
+        actor_email = Keyword.get(dynamic_config, :actor_email)
+        project_id = determine_project_id(config, dynamic_config)
+
+        {
+          account,
+          config
+          |> Map.put("project_id", project_id)
+          |> Map.put("actor_email", actor_email)
+        }
+      end)
+      |> Enum.into(%{})
+
     {:ok, config}
+  end
+
+  def map_config(config) when is_map(config), do: %{default: config}
+
+  def map_config(config) when is_list(config) do
+    config
+    |> Enum.map(fn config ->
+      {
+        config["client_email"],
+        config
+      }
+    end)
+    |> Enum.into(%{})
   end
 
   defp config_mod_init(config) do
     case Keyword.get(config, :config_module) do
-      nil -> {:ok, config}
+      nil ->
+        {:ok, config}
+
       mod ->
         if Code.ensure_loaded?(mod) and function_exported?(mod, :init, 1) do
           mod.init(config)
@@ -101,19 +125,23 @@ defmodule Goth.Config do
   defp from_gcloud_adc(config) do
     # config_root_dir = Application.get_env(:goth, :config_root_dir)
     config_root_dir = Keyword.get(config, :config_root_dir)
-    path_root = if config_root_dir == nil do
-      case :os.type() do
-        {:win32, _} ->
-          System.get_env("APPDATA") || ""
-        {:unix, _} ->
-          home_dir = System.get_env("HOME") || ""
-          Path.join([home_dir, ".config"])
+
+    path_root =
+      if config_root_dir == nil do
+        case :os.type() do
+          {:win32, _} ->
+            System.get_env("APPDATA") || ""
+
+          {:unix, _} ->
+            home_dir = System.get_env("HOME") || ""
+            Path.join([home_dir, ".config"])
+        end
+      else
+        config_root_dir
       end
-    else
-      config_root_dir
-    end
 
     path = Path.join([path_root, "gcloud", "application_default_credentials.json"])
+
     if File.regular?(path) do
       path |> File.read!() |> decode_json()
     else
@@ -153,40 +181,60 @@ defmodule Goth.Config do
   # Decodes JSON (if configured) and sets oauth token source
   defp decode_json(json) do
     json
-    |> Poison.decode!
+    |> Poison.decode!()
     |> set_token_source
   end
 
   defp set_token_source(map = %{"private_key" => _}) do
     Map.put(map, "token_source", :oauth_jwt)
   end
+
   defp set_token_source(map = %{"refresh_token" => _, "client_id" => _, "client_secret" => _}) do
     Map.put(map, "token_source", :oauth_refresh)
+  end
+
+  defp set_token_source(list) when is_list(list) do
+    Enum.map(list, fn config ->
+      set_token_source(config)
+    end)
   end
 
   @doc """
   Set a value in the config.
   """
-  @spec set(String.t | atom, any()) :: :ok
+  @spec set(String.t() | atom, any()) :: :ok
   def set(key, value) when is_atom(key), do: key |> to_string |> set(value)
-  def set(key, value) do
-    GenServer.call(__MODULE__, {:set, key, value})
+
+  def set(key, value), do: set(:default, key, value)
+
+  def set(account, key, value) do
+    GenServer.call(__MODULE__, {:set, account, key, value})
   end
 
   @doc """
   Retrieve a value from the config.
   """
-  @spec get(String.t | atom) :: {:ok, any()} | :error
+  @spec get(String.t() | atom) :: {:ok, any()} | :error
   def get(key) when is_atom(key), do: key |> to_string |> get
-  def get(key) do
-    GenServer.call(__MODULE__, {:get, key})
+  def get(key), do: get(:default, key)
+
+  @spec get(String.t() | atom, String.t()) :: {:ok, any()} | :error
+  def get(account, key) when is_atom(key) do
+    get(account, key |> to_string())
   end
 
-  def handle_call({:set, key, value}, _from, keys) do
-    {:reply, :ok, Map.put(keys, key, value)}
+  def get(account, key) do
+    GenServer.call(__MODULE__, {:get, account, key})
   end
 
-  def handle_call({:get, key}, _from, keys) do
-    {:reply, Map.fetch(keys, key), keys}
+  def handle_call({:set, account, key, value}, _from, keys) do
+    {:reply, :ok, put_in(keys, [account, key], value)}
+  end
+
+  def handle_call({:get, account, key}, _from, keys) do
+    case Map.fetch(keys, account) do
+      {:ok, config} -> {:reply, Map.fetch(config, key), keys}
+      :error -> {:reply, :error, keys}
+    end
   end
 end
