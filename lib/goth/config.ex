@@ -214,11 +214,11 @@ defmodule Goth.Config do
   @doc """
   Retrieve a value from the config.
   """
-  @spec get(String.t() | atom) :: {:ok, any()} | :error
-  def get(key) when is_atom(key), do: key |> to_string |> get
+  @spec get(String.t() | atom()) :: {:ok, any()} | :error
+  def get(key) when is_atom(key), do: key |> to_string() |> get()
   def get(key), do: get(:default, key)
 
-  @spec get(String.t() | atom, String.t()) :: {:ok, any()} | :error
+  @spec get(String.t() | atom(), String.t() | atom()) :: {:ok, any()} | :error
   def get(account, key) when is_atom(key) do
     get(account, key |> to_string())
   end
