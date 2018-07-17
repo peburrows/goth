@@ -8,6 +8,7 @@ defmodule Goth.Mixfile do
       description: description(),
       package: package(),
       elixirc_paths: elixirc_paths(Mix.env()),
+      elixirc_options: [warnings_as_errors: true],
       elixir: "~> 1.4",
       deps: deps()
     ]
@@ -32,7 +33,8 @@ defmodule Goth.Mixfile do
       {:mix_test_watch, "~> 0.2", only: :dev},
       {:ex_doc, "~> 0.11.3", only: :dev},
       {:earmark, "~> 0.2", only: :dev},
-      {:credo, "~> 0.8", only: [:test, :dev]}
+      {:credo, "~> 0.8", only: [:test, :dev]},
+      {:dialyxir, "~> 0.5", only: [:dev], runtime: false}
     ]
   end
 
