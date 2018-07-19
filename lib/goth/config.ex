@@ -87,6 +87,11 @@ defmodule Goth.Config do
     |> Enum.into(%{})
   end
 
+  def add_config(config) when is_map(config) do
+    config = set_token_source(config)
+    GenServer.call(__MODULE__, {:add_config, config["client_email"], config})
+  end
+
   defp config_mod_init(config) do
     case Keyword.get(config, :config_module) do
       nil ->
@@ -229,6 +234,10 @@ defmodule Goth.Config do
 
   def handle_call({:set, account, key, value}, _from, keys) do
     {:reply, :ok, put_in(keys, [account, key], value)}
+  end
+
+  def handle_call({:add_config, account, config}, _from, keys) do
+    {:reply, :ok, Map.put(keys, account, config)}
   end
 
   def handle_call({:get, account, key}, _from, keys) do
