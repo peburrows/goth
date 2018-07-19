@@ -2,6 +2,18 @@ defmodule Goth.ConfigTest do
   use ExUnit.Case
   alias Goth.Config
 
+  def check_config(map) do
+    check_config(map, fn key -> Config.get(key) end)
+  end
+
+  def check_config(map, get_config) do
+    map
+    |> Map.keys()
+    |> Enum.each(fn key ->
+      assert {:ok, map[key]} == get_config.(key)
+    end)
+  end
+
   setup do
     bypass = Bypass.open()
     bypass_url = "http://localhost:#{bypass.port}"
@@ -25,13 +37,28 @@ defmodule Goth.ConfigTest do
   end
 
   test "the initial state is what's passed in from the app config" do
-    state = "test/data/test-credentials.json" |> Path.expand() |> File.read!() |> Poison.decode!()
+    "test/data/test-credentials.json"
+    |> Path.expand()
+    |> File.read!()
+    |> Poison.decode!()
+    |> check_config(fn key -> Config.get(key) end)
+  end
 
-    state
-    |> Map.keys()
-    |> Enum.each(fn key ->
-      assert {:ok, state[key]} == Config.get(key)
-    end)
+  test "dynamically add configs without interfering with existing accounts" do
+    original_config = "test/data/test-credentials.json"
+    |> Path.expand()
+    |> File.read!()
+    |> Poison.decode!()
+
+    dynamic_config = "test/data/test-credentials-2.json"
+    |> Path.expand()
+    |> File.read!()
+    |> Poison.decode!()
+
+    Config.add_config(dynamic_config)
+
+    check_config(original_config)
+    check_config(dynamic_config, fn key -> Config.get(dynamic_config["client_email"], key) end)
   end
 
   test "the initial state has the token_source set to oauth_jwt" do
@@ -163,12 +190,7 @@ defmodule Goth.ConfigTest do
       |> File.read!()
       |> Poison.decode!()
 
-    state
-    |> Map.keys()
-    |> Enum.each(fn key ->
-      assert {:ok, state[key]} == Config.get(key)
-    end)
-
+    check_config(state)
     assert {:ok, :oauth_refresh} == Config.get(:token_source)
 
     # Restore original config
