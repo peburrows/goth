@@ -124,12 +124,13 @@ defmodule Goth.Token do
   although `Goth` automatically handles refreshing tokens for you, so you should
   rarely if ever actually need to call this method manually.
   """
-  @spec refresh!(t | String.t()) :: {:ok, t}
+  @spec refresh!(t() | {any(), any()}) :: {:ok, t()}
   def refresh!(%__MODULE__{account: account, scope: scope, sub: sub}),
     do: refresh!({account, scope}, sub)
 
   def refresh!(%__MODULE__{account: account, scope: scope}), do: refresh!({account, scope})
 
+  @spec refresh!({any(), any()}, any()) :: {:ok, t()}
   def refresh!({account, scope}, sub \\ nil), do: retrieve_and_store!({account, scope}, sub)
 
   def queue_for_refresh(%__MODULE__{} = token) do

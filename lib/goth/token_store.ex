@@ -25,17 +25,16 @@ defmodule Goth.TokenStore do
   @spec store(Token.t()) :: pid
   def store(%Token{} = token), do: store(token.scope, token.sub, token)
 
-  @spec store(String.t(), Token.t()) :: pid
+  @spec store({String.t() | atom(), String.t()} | String.t(), Token.t()) :: pid()
   def store(scopes, %Token{} = token) when is_binary(scopes),
     do: store({:default, scopes}, token.sub, token)
+
+  def store({account, scopes}, %Token{} = token) when is_binary(scopes),
+    do: store({account, scopes}, token.sub, token)
 
   @spec store(String.t(), String.t(), Token.t()) :: pid
   def store(scopes, sub, %Token{} = token) when is_binary(scopes),
     do: store({:default, scopes}, sub, token)
-
-  @spec store({String.t() | atom(), String.t()}, String.t() | nil, Token.t()) :: pid
-  def store({account, scopes}, %Token{} = token) when is_binary(scopes),
-    do: store({account, scopes}, token.sub, token)
 
   @spec store({String.t() | atom(), String.t()}, String.t() | nil, Token.t()) :: pid
   def store({account, scopes}, sub, %Token{} = token) when is_binary(scopes) do
