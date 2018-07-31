@@ -64,9 +64,9 @@ defmodule Goth.Token do
       iex> Token.for_scope("https://www.googleapis.com/auth/pubsub")
       {:ok, %Goth.Token{expires: ..., token: "...", type: "..."} }
   """
-  @spec for_scope(scope :: String.t(), sub :: String.t() | nil) :: {:ok, t}
   def for_scope(info, sub \\ nil)
 
+  @spec for_scope(scope :: String.t(), sub :: String.t() | nil) :: {:ok, t}
   def for_scope(scope, sub) when is_binary(scope) do
     case TokenStore.find({:default, scope}, sub) do
       :error -> retrieve_and_store!({:default, scope}, sub)
@@ -74,7 +74,7 @@ defmodule Goth.Token do
     end
   end
 
-  @spec for_scope({info :: {String.t(), atom()} | atom()}, sub :: String.t() | nil) :: {:ok, t}
+  @spec for_scope(info :: {String.t() | atom(), String.t()}, sub :: String.t() | nil) :: {:ok, t}
   def for_scope({account, scope}, sub) do
     case TokenStore.find({account, scope}, sub) do
       :error -> retrieve_and_store!({account, scope}, sub)
