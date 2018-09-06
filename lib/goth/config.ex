@@ -42,13 +42,13 @@ defmodule Goth.Config do
   """
   @callback init(config :: Keyword.t()) :: {:ok, Keyword.t()}
 
-  def start_link do
-    GenServer.start_link(__MODULE__, :ok, name: __MODULE__)
+  def start_link(envs) do
+    GenServer.start_link(__MODULE__, envs, name: __MODULE__)
   end
 
-  def init(:ok) do
+  def init(envs) do
     {:ok, dynamic_config} =
-      Application.get_all_env(:goth)
+      envs
       |> config_mod_init
 
     config =
