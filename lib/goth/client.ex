@@ -80,13 +80,8 @@ defmodule Goth.Client do
 
     headers = [{"Content-Type", "application/x-www-form-urlencoded"}]
 
-    {:ok, response} = HTTPoison.post(url, body, headers)
-
-    if response.status_code >= 200 && response.status_code < 300 do
-      {:ok, Token.from_response_json({account, scope}, sub, response.body)}
-    else
-      {:error, "Could not retrieve token, response: #{response.body}"}
-    end
+    HTTPoison.post(url, body, headers)
+    |> handle_response({account, scope}, sub)
   end
 
   # Fetch an access token from Google's OAuth service using a refresh token
@@ -108,13 +103,8 @@ defmodule Goth.Client do
 
     headers = [{"Content-Type", "application/x-www-form-urlencoded"}]
 
-    {:ok, response} = HTTPoison.post(url, body, headers)
-
-    if response.status_code >= 200 && response.status_code < 300 do
-      {:ok, Token.from_response_json({account, scope}, response.body)}
-    else
-      {:error, "Could not retrieve token, response: #{response.body}"}
-    end
+    HTTPoison.post(url, body, headers)
+    |> handle_response({account, scope})
   end
 
   def claims(scope, opts \\ [])
@@ -183,4 +173,15 @@ defmodule Goth.Client do
     |> Keyword.merge(opts)
     |> Enum.into(%{})
   end
+
+  defp handle_response(resp, opts, sub \\ nil)
+
+  defp handle_response({:ok, %{body: body, status_code: code}}, {account, scope}, sub)
+       when code in 200..299,
+       do: {:ok, Token.from_response_json({account, scope}, sub, body)}
+
+  defp handle_response({:ok, %{body: body}}, _scope, _sub),
+    do: {:error, "Could not retrieve token, response: #{body}"}
+
+  defp handle_response(other, _scope, _sub), do: other
 end

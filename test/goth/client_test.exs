@@ -4,7 +4,7 @@ defmodule Goth.ClientTest do
   alias Goth.Token
 
   setup do
-    bypass = Bypass.open
+    bypass = Bypass.open()
     bypass_url = "http://localhost:#{bypass.port}"
     Application.put_env(:goth, :endpoint, bypass_url)
     Application.put_env(:goth, :metadata_url, bypass_url)
@@ -14,16 +14,16 @@ defmodule Goth.ClientTest do
   test "we include all necessary attributes in the JWT" do
     {:ok, email} = Goth.Config.get(:client_email)
     iat = :os.system_time(:seconds)
-    exp = iat+10
+    exp = iat + 10
     scope = "prediction"
 
     assert %{
-      "iss"   => ^email,
-      "scope" => ^scope,
-      "aud"   => "https://www.googleapis.com/oauth2/v4/token",
-      "iat"   => ^iat,
-      "exp"   =>   ^exp
-    } = Client.claims(scope)
+             "iss" => ^email,
+             "scope" => ^scope,
+             "aud" => "https://www.googleapis.com/oauth2/v4/token",
+             "iat" => ^iat,
+             "exp" => ^exp
+           } = Client.claims(scope)
   end
 
   test "iat is support in the JWT" do
@@ -33,11 +33,11 @@ defmodule Goth.ClientTest do
     scope = "prediction"
 
     token = %{
-      "iss"   => email,
+      "iss" => email,
       "scope" => scope,
-      "aud"   => "https://www.googleapis.com/oauth2/v4/token",
-      "iat"   => iat,
-      "exp"   => exp
+      "aud" => "https://www.googleapis.com/oauth2/v4/token",
+      "iat" => iat,
+      "exp" => exp
     }
 
     assert token == Client.claims(scope, iat)
@@ -52,13 +52,13 @@ defmodule Goth.ClientTest do
     sub = "sub@example.com"
 
     assert %{
-      "iss"   => ^email,
-      "scope" => ^scope,
-      "aud"   => "https://www.googleapis.com/oauth2/v4/token",
-      "iat"   => ^iat,
-      "sub"   => ^sub,
-      "exp"   => ^exp
-    } = Client.claims(scope, iat: iat, sub: sub)
+             "iss" => ^email,
+             "scope" => ^scope,
+             "aud" => "https://www.googleapis.com/oauth2/v4/token",
+             "iat" => ^iat,
+             "sub" => ^sub,
+             "exp" => ^exp
+           } = Client.claims(scope, iat: iat, sub: sub)
   end
 
   test "the claims json generated is legit" do
@@ -69,20 +69,20 @@ defmodule Goth.ClientTest do
   test "we call the API with the correct jwt data and generate a token", %{bypass: bypass} do
     token_response = %{
       "access_token" => "1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M",
-      "token_type"   => "Bearer",
-      "expires_in"   => 3600
+      "token_type" => "Bearer",
+      "expires_in" => 3600
     }
 
     scope = "prediction"
 
-    Bypass.expect bypass, fn conn ->
+    Bypass.expect(bypass, fn conn ->
       assert "/oauth2/v4/token" == conn.request_path
-      assert "POST"             == conn.method
+      assert "POST" == conn.method
 
       assert_body_is_legit_jwt(conn, scope)
 
       Plug.Conn.resp(conn, 201, Poison.encode!(token_response))
-    end
+    end)
 
     {:ok, data} = Client.get_access_token(scope)
 
@@ -97,7 +97,7 @@ defmodule Goth.ClientTest do
     assert String.length(body) > 0
 
     [_header, claims, _sign] = String.split(body, ".")
-    claims = claims |> Base.url_decode64!(padding: false) |> Poison.decode!
+    claims = claims |> Base.url_decode64!(padding: false) |> Poison.decode!()
 
     generated = Client.claims(scope, claims["iat"])
 
@@ -107,28 +107,33 @@ defmodule Goth.ClientTest do
   test "we call the API with the correct refresh data and generate a token", %{bypass: bypass} do
     # Set up a temporary config with a refresh token
     normal_json = Application.get_env(:goth, :json)
-    refresh_json = "test/data/home/gcloud/application_default_credentials.json" |> Path.expand |> File.read!
+
+    refresh_json =
+      "test/data/home/gcloud/application_default_credentials.json"
+      |> Path.expand()
+      |> File.read!()
+
     Application.put_env(:goth, :json, refresh_json, persistent: true)
     Application.stop(:goth)
     Application.start(:goth)
 
     token_response = %{
       "access_token" => "1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M",
-      "token_type"   => "Bearer",
-      "expires_in"   => 3600
+      "token_type" => "Bearer",
+      "expires_in" => 3600
     }
 
     scope = "prediction"
 
-    Bypass.expect bypass, fn conn ->
+    Bypass.expect(bypass, fn conn ->
       assert "/oauth2/v4/token" == conn.request_path
-      assert "POST"             == conn.method
+      assert "POST" == conn.method
 
       {:ok, body, _conn} = Plug.Conn.read_body(conn)
       assert body =~ ~r/refresh_token=refreshrefreshrefresh/
 
       Plug.Conn.resp(conn, 201, Poison.encode!(token_response))
-    end
+    end)
 
     {:ok, data} = Client.get_access_token(scope)
 
@@ -146,21 +151,27 @@ defmodule Goth.ClientTest do
   test "We call the metadata service correctly and decode the token", %{bypass: bypass} do
     token_response = %{
       "access_token" => "1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M",
-      "token_type"   => "Bearer",
-      "expires_in"   => 3600
+      "token_type" => "Bearer",
+      "expires_in" => 3600
     }
 
-    scopes = ["https://www.googleapis.com/auth/pubsub",
-              "https://www.googleapis.com/auth/taskqueue"]
+    scopes = [
+      "https://www.googleapis.com/auth/pubsub",
+      "https://www.googleapis.com/auth/taskqueue"
+    ]
+
     scopes_response = Enum.join(scopes, "\n")
 
-    Bypass.expect(bypass, fn(conn) ->
+    Bypass.expect(bypass, fn conn ->
       url_t = "/computeMetadata/v1/instance/service-accounts/default/token"
       url_s = "/computeMetadata/v1/instance/service-accounts/default/scopes"
 
       assert(conn.method == "GET", "Request method should be GET")
-      assert(Plug.Conn.get_req_header(conn, "metadata-flavor") == ["Google"],
-             "Metadata header should be set correctly")
+
+      assert(
+        Plug.Conn.get_req_header(conn, "metadata-flavor") == ["Google"],
+        "Metadata header should be set correctly"
+      )
 
       case conn.request_path do
         ^url_t -> Plug.Conn.resp(conn, 200, Poison.encode!(token_response))
@@ -173,11 +184,13 @@ defmodule Goth.ClientTest do
     at = token_response["access_token"]
     tt = token_response["token_type"]
 
-    assert(%Token{token: ^at, type: ^tt, expires: _exp} = data,
-           "Returned token should match metadata response")
+    assert(
+      %Token{token: ^at, type: ^tt, expires: _exp} = data,
+      "Returned token should match metadata response"
+    )
   end
 
-  test "When authentication fail, warn the user of the issue", %{bypass: bypass} do
+  test "When authentication fails, warn the user of the issue", %{bypass: bypass} do
     token_response = %{
       "error" => "deleted_client",
       "error_description" => "The OAuth client was deleted."
@@ -185,17 +198,24 @@ defmodule Goth.ClientTest do
 
     scope = "prediction"
 
-    Bypass.expect bypass, fn conn ->
+    Bypass.expect(bypass, fn conn ->
       assert "/oauth2/v4/token" == conn.request_path
-      assert "POST"             == conn.method
+      assert "POST" == conn.method
 
       assert_body_is_legit_jwt(conn, scope)
 
       Plug.Conn.resp(conn, 401, Poison.encode!(token_response))
-    end
+    end)
 
     {:error, data} = Client.get_access_token(scope)
 
     assert data =~ "Could not retrieve token, response:"
+  end
+
+  test "returns {:error, err} when HTTP call fails hard" do
+    old_url = Application.get_env(:goth, :endpoint)
+    Application.put_env(:goth, :endpoint, "nnnnnopelkjlkj.nope")
+    assert {:error, _} = Client.get_access_token("my-scope")
+    Application.put_env(:goth, :endpoint, old_url)
   end
 end
