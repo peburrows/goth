@@ -65,6 +65,23 @@ defmodule Goth.ConfigTest do
     assert {:ok, :oauth_jwt} == Config.get(:token_source)
   end
 
+  test "Config can start up with no config when disabled" do
+    saved_config = Application.get_all_env(:goth)
+    try do
+      [:json, :metadata_url, :config_root_dir]
+      |> Enum.each(&Application.delete_env(:goth, &1))
+      Application.put_env(:goth, :disabled, true, persistent: true)
+
+      {:ok, pid} = GenServer.start_link(Goth.Config, :ok)
+      assert Process.alive?(pid)
+    after
+      Application.delete_env(:goth, :disabled)
+      Enum.each(saved_config, fn {k, v} ->
+        Application.put_env(:goth, k, v, persistent: true)
+      end)
+    end
+  end
+
   test "Goth correctly retrieves project IDs from metadata", %{bypass: bypass} do
     # The test configuration sets an example JSON blob. We override it briefly
     # during this test.

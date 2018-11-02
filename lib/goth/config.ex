@@ -47,20 +47,32 @@ defmodule Goth.Config do
   end
 
   def init(:ok) do
-    {:ok, dynamic_config} =
-      Application.get_all_env(:goth)
-      |> config_mod_init
+    {:ok, config} =
+      :goth
+      |> Application.get_all_env()
+      |> config_mod_init()
 
+    config
+    |> Keyword.pop(:disabled, false)
+    |> load_and_init()
+  end
+
+  # We have been configured as `disabled` so just start with an empty configuration
+  defp load_and_init({true, _config}) do
+    {:ok, %{}}
+  end
+
+  defp load_and_init({false, app_config}) do
     config =
-      from_json(dynamic_config) || from_config(dynamic_config) || from_creds_file(dynamic_config) ||
-        from_gcloud_adc(dynamic_config) || from_metadata(dynamic_config)
+      from_json(app_config) || from_config(app_config) || from_creds_file(app_config) ||
+        from_gcloud_adc(app_config) || from_metadata(app_config)
 
     config =
       config
       |> map_config()
       |> Enum.map(fn {account, config} ->
-        actor_email = Keyword.get(dynamic_config, :actor_email)
-        project_id = determine_project_id(config, dynamic_config)
+        actor_email = Keyword.get(app_config, :actor_email)
+        project_id = determine_project_id(config, app_config)
 
         {
           account,

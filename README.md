@@ -87,6 +87,17 @@ Alternatively, you can pass your sub email on a per-call basis, for example:
                        "some-email@your-domain.com")
   ```
 
+If you need to disable Goth in certain environments, you can set a `disabled`
+flag in your config:
+
+  ```elixir
+  config :goth,
+    disabled: true
+  ```
+
+This initializes Goth with an empty config, so any attempts to actually generate
+tokens will fail.
+
 ## Usage
 
 ### Retrieve a token:
