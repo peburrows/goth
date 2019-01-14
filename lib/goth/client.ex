@@ -145,9 +145,13 @@ defmodule Goth.Client do
 
   def jwt({account, scope}, opts) when is_list(opts) do
     {:ok, key} = Config.get(account, :private_key)
+    signer = Joken.Signer.create("RS256", %{"pem" => key})
 
-    claims({account, scope}, opts)
-    |> JsonWebToken.sign(%{alg: "RS256", key: JsonWebToken.Algorithm.RsaUtil.private_key(key)})
+    {:ok, jwt} =
+      claims({account, scope}, opts)
+      |> Joken.Signer.sign(signer)
+
+    jwt
   end
 
   @doc "Retrieves the project ID from Google's metadata service"
