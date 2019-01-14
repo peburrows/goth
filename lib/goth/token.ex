@@ -89,7 +89,7 @@ defmodule Goth.Token do
 
   @spec from_response_json(String.t(), String.t() | nil, String.t()) :: t
   def from_response_json(scope, sub, json) when is_binary(scope) do
-    {:ok, attrs} = json |> Poison.decode()
+    {:ok, attrs} = json |> Jason.decode()
 
     %__MODULE__{
       token: attrs["access_token"],
@@ -107,7 +107,7 @@ defmodule Goth.Token do
           String.t()
         ) :: t
   def from_response_json({account, scope}, sub, json) do
-    {:ok, attrs} = json |> Poison.decode()
+    {:ok, attrs} = json |> Jason.decode()
 
     %__MODULE__{
       token: attrs["access_token"],

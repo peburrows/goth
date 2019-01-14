@@ -29,7 +29,6 @@ defmodule Goth.Mixfile do
       {:joken, "~> 2.0"},
       {:jason, "~> 1.1"},
       {:httpoison, "~> 0.11 or ~> 1.0"},
-      {:poison, "~> 2.1 or ~> 3.0"},
       {:bypass, "~> 0.1", only: :test},
       {:mix_test_watch, "~> 0.2", only: :dev},
       {:ex_doc, "~> 0.11.3", only: :dev},

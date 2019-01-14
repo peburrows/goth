@@ -136,7 +136,7 @@ defmodule Goth.Client do
 
   def json({account, scope}, opts) when is_list(opts) do
     claims({account, scope}, opts)
-    |> Poison.encode!()
+    |> Jason.encode!()
   end
 
   def jwt(info, opts \\ [])

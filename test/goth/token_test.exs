@@ -59,7 +59,7 @@ defmodule Goth.TokenTest do
       Plug.Conn.resp(
         conn,
         201,
-        Poison.encode!(%{"access_token" => "123", "token_type" => "Bearer", "expires_in" => 3600})
+        Jason.encode!(%{"access_token" => "123", "token_type" => "Bearer", "expires_in" => 3600})
       )
     end)
 
@@ -84,7 +84,7 @@ defmodule Goth.TokenTest do
       Plug.Conn.resp(
         conn,
         201,
-        Poison.encode!(%{"access_token" => "123", "token_type" => "Bearer", "expires_in" => 3600})
+        Jason.encode!(%{"access_token" => "123", "token_type" => "Bearer", "expires_in" => 3600})
       )
     end)
 
@@ -119,7 +119,7 @@ defmodule Goth.TokenTest do
       Plug.Conn.resp(
         conn,
         201,
-        Poison.encode!(%{"access_token" => "123", "token_type" => "Bearer", "expires_in" => 3600})
+        Jason.encode!(%{"access_token" => "123", "token_type" => "Bearer", "expires_in" => 3600})
       )
     end)
 
@@ -138,7 +138,7 @@ defmodule Goth.TokenTest do
       Plug.Conn.resp(
         conn,
         201,
-        Poison.encode!(%{"access_token" => "123", "token_type" => "Bearer", "expires_in" => 3600})
+        Jason.encode!(%{"access_token" => "123", "token_type" => "Bearer", "expires_in" => 3600})
       )
     end)
 
@@ -151,7 +151,7 @@ defmodule Goth.TokenTest do
       Plug.Conn.resp(
         conn,
         201,
-        Poison.encode!(%{
+        Jason.encode!(%{
           "access_token" => "123-sub",
           "token_type" => "Bearer",
           "expires_in" => 3600
@@ -171,7 +171,7 @@ defmodule Goth.TokenTest do
       Plug.Conn.resp(
         conn,
         201,
-        Poison.encode!(%{"access_token" => "123", "token_type" => "Bearer", "expires_in" => 3600})
+        Jason.encode!(%{"access_token" => "123", "token_type" => "Bearer", "expires_in" => 3600})
       )
     end)
 
@@ -182,7 +182,7 @@ defmodule Goth.TokenTest do
       Plug.Conn.resp(
         conn,
         201,
-        Poison.encode!(%{"access_token" => "321", "token_type" => "Bearer", "expires_in" => 3600})
+        Jason.encode!(%{"access_token" => "321", "token_type" => "Bearer", "expires_in" => 3600})
       )
     end)
 

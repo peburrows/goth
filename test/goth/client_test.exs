@@ -63,7 +63,7 @@ defmodule Goth.ClientTest do
 
   test "the claims json generated is legit" do
     json = Client.json("prediction")
-    assert {:ok, _obj} = Poison.decode(json)
+    assert {:ok, _obj} = Jason.decode(json)
   end
 
   test "we call the API with the correct jwt data and generate a token", %{bypass: bypass} do
@@ -81,7 +81,7 @@ defmodule Goth.ClientTest do
 
       assert_body_is_legit_jwt(conn, scope)
 
-      Plug.Conn.resp(conn, 201, Poison.encode!(token_response))
+      Plug.Conn.resp(conn, 201, Jason.encode!(token_response))
     end)
 
     {:ok, data} = Client.get_access_token(scope)
@@ -97,7 +97,7 @@ defmodule Goth.ClientTest do
     assert String.length(body) > 0
 
     [_header, claims, _sign] = String.split(body, ".")
-    claims = claims |> Base.url_decode64!(padding: false) |> Poison.decode!()
+    claims = claims |> Base.url_decode64!(padding: false) |> Jason.decode!()
 
     generated = Client.claims(scope, claims["iat"])
 
@@ -132,7 +132,7 @@ defmodule Goth.ClientTest do
       {:ok, body, _conn} = Plug.Conn.read_body(conn)
       assert body =~ ~r/refresh_token=refreshrefreshrefresh/
 
-      Plug.Conn.resp(conn, 201, Poison.encode!(token_response))
+      Plug.Conn.resp(conn, 201, Jason.encode!(token_response))
     end)
 
     {:ok, data} = Client.get_access_token(scope)
@@ -174,7 +174,7 @@ defmodule Goth.ClientTest do
       )
 
       case conn.request_path do
-        ^url_t -> Plug.Conn.resp(conn, 200, Poison.encode!(token_response))
+        ^url_t -> Plug.Conn.resp(conn, 200, Jason.encode!(token_response))
         ^url_s -> Plug.Conn.resp(conn, 200, scopes_response)
       end
     end)
@@ -204,7 +204,7 @@ defmodule Goth.ClientTest do
 
       assert_body_is_legit_jwt(conn, scope)
 
-      Plug.Conn.resp(conn, 401, Poison.encode!(token_response))
+      Plug.Conn.resp(conn, 401, Jason.encode!(token_response))
     end)
 
     {:error, data} = Client.get_access_token(scope)
