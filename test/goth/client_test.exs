@@ -105,6 +105,26 @@ defmodule Goth.ClientTest do
   end
 
   test "we call the API with the correct refresh data and generate a token", %{bypass: bypass} do
+    token_response = %{
+      "access_token" => "1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M",
+      "token_type" => "Bearer",
+      "expires_in" => 3600
+    }
+
+    Bypass.stub(bypass, "GET", "/computeMetadata/v1/project/project-id", fn conn ->
+      Plug.Conn.resp(conn, 200, "test-project")
+    end)
+
+    Bypass.stub(bypass, "POST", "/oauth2/v4/token", fn conn ->
+      # assert "/oauth2/v4/token" == conn.request_path
+      assert "POST" == conn.method
+
+      {:ok, body, _conn} = Plug.Conn.read_body(conn)
+      assert body =~ ~r/refresh_token=refreshrefreshrefresh/
+
+      Plug.Conn.resp(conn, 201, Jason.encode!(token_response))
+    end)
+
     # Set up a temporary config with a refresh token
     normal_json = Application.get_env(:goth, :json)
 
@@ -117,23 +137,7 @@ defmodule Goth.ClientTest do
     Application.stop(:goth)
     Application.start(:goth)
 
-    token_response = %{
-      "access_token" => "1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M",
-      "token_type" => "Bearer",
-      "expires_in" => 3600
-    }
-
     scope = "prediction"
-
-    Bypass.expect(bypass, fn conn ->
-      assert "/oauth2/v4/token" == conn.request_path
-      assert "POST" == conn.method
-
-      {:ok, body, _conn} = Plug.Conn.read_body(conn)
-      assert body =~ ~r/refresh_token=refreshrefreshrefresh/
-
-      Plug.Conn.resp(conn, 201, Jason.encode!(token_response))
-    end)
 
     {:ok, data} = Client.get_access_token(scope)
 
