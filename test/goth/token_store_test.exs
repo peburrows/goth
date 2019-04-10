@@ -55,7 +55,7 @@ defmodule Goth.TokenStoreTest do
       Plug.Conn.resp(
         conn,
         201,
-        Poison.encode!(%{
+        Jason.encode!(%{
           "access_token" => "fresh",
           "token_type" => "Bearer",
           "expires_in" => 3600

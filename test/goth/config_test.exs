@@ -40,7 +40,7 @@ defmodule Goth.ConfigTest do
     "test/data/test-credentials.json"
     |> Path.expand()
     |> File.read!()
-    |> Poison.decode!()
+    |> Jason.decode!()
     |> check_config(fn key -> Config.get(key) end)
   end
 
@@ -48,12 +48,12 @@ defmodule Goth.ConfigTest do
     original_config = "test/data/test-credentials.json"
     |> Path.expand()
     |> File.read!()
-    |> Poison.decode!()
+    |> Jason.decode!()
 
     dynamic_config = "test/data/test-credentials-2.json"
     |> Path.expand()
     |> File.read!()
-    |> Poison.decode!()
+    |> Jason.decode!()
 
     Config.add_config(dynamic_config)
 
@@ -63,6 +63,23 @@ defmodule Goth.ConfigTest do
 
   test "the initial state has the token_source set to oauth_jwt" do
     assert {:ok, :oauth_jwt} == Config.get(:token_source)
+  end
+
+  test "Config can start up with no config when disabled" do
+    saved_config = Application.get_all_env(:goth)
+    try do
+      [:json, :metadata_url, :config_root_dir]
+      |> Enum.each(&Application.delete_env(:goth, &1))
+      Application.put_env(:goth, :disabled, true, persistent: true)
+
+      {:ok, pid} = GenServer.start_link(Goth.Config, :ok)
+      assert Process.alive?(pid)
+    after
+      Application.delete_env(:goth, :disabled)
+      Enum.each(saved_config, fn {k, v} ->
+        Application.put_env(:goth, k, v, persistent: true)
+      end)
+    end
   end
 
   test "Goth correctly retrieves project IDs from metadata", %{bypass: bypass} do
@@ -113,7 +130,7 @@ defmodule Goth.ConfigTest do
       "test/data/test-credentials-2.json"
       |> Path.expand()
       |> File.read!()
-      |> Poison.decode!()
+      |> Jason.decode!()
       |> Config.map_config()
 
     Enum.each(state, fn {_, config} ->
@@ -146,7 +163,7 @@ defmodule Goth.ConfigTest do
       "test/data/test-multicredentials.json"
       |> Path.expand()
       |> File.read!()
-      |> Poison.decode!()
+      |> Jason.decode!()
       |> Config.map_config()
 
     Enum.each(state, fn {account, config} ->
@@ -188,7 +205,7 @@ defmodule Goth.ConfigTest do
       "test/data/home/gcloud/application_default_credentials.json"
       |> Path.expand()
       |> File.read!()
-      |> Poison.decode!()
+      |> Jason.decode!()
 
     check_config(state)
     assert {:ok, :oauth_refresh} == Config.get(:token_source)
