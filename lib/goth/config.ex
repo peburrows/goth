@@ -51,7 +51,7 @@ defmodule Goth.Config do
       envs
       |> config_mod_init
 
-    config
+    dynamic_config
       |> Keyword.pop(:disabled, false)
       |> load_and_init()
   end
