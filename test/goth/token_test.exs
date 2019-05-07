@@ -69,6 +69,13 @@ defmodule Goth.TokenTest do
              Token.for_scope("random", "sub@example.com")
   end
 
+  test "it will not raise when token cannot be retrieved from the API" do
+    orig = Application.get_env(:goth, :endpoint)
+    Application.put_env(:goth, :endpoint, "http://lkjoine.lkj")
+    assert {:error, _} = Token.for_scope("lkjlkjlkj")
+    Application.put_env(:goth, :endpoint, orig)
+  end
+
   test "it will pull a token for a specific account", %{bypass: bypass} do
     # The test configuration sets an example JSON blob. We override it briefly
     # during this test.
