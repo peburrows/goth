@@ -66,7 +66,7 @@ defmodule Goth.Token do
   """
   def for_scope(info, sub \\ nil)
 
-  @spec for_scope(scope :: String.t(), sub :: String.t() | nil) :: {:ok, t}
+  @spec for_scope(scope :: String.t(), sub :: String.t() | nil) :: {:ok, t} | {:error, any()}
   def for_scope(scope, sub) when is_binary(scope) do
     case TokenStore.find({:default, scope}, sub) do
       :error -> retrieve_and_store!({:default, scope}, sub)
@@ -74,7 +74,8 @@ defmodule Goth.Token do
     end
   end
 
-  @spec for_scope(info :: {String.t() | atom(), String.t()}, sub :: String.t() | nil) :: {:ok, t}
+  @spec for_scope(info :: {String.t() | atom(), String.t()}, sub :: String.t() | nil) ::
+          {:ok, t} | {:error, any()}
   def for_scope({account, scope}, sub) do
     case TokenStore.find({account, scope}, sub) do
       :error -> retrieve_and_store!({account, scope}, sub)
@@ -147,8 +148,14 @@ defmodule Goth.Token do
   end
 
   defp retrieve_and_store!({account, scope}, sub) do
-    {:ok, token} = Client.get_access_token({account, scope}, sub: sub)
-    TokenStore.store({account, scope}, sub, token)
-    {:ok, token}
+    Client.get_access_token({account, scope}, sub: sub)
+    |> case do
+      {:ok, token} ->
+        TokenStore.store({account, scope}, sub, token)
+        {:ok, token}
+
+      other ->
+        other
+    end
   end
 end
