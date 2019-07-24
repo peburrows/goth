@@ -55,7 +55,7 @@ defmodule Goth.Token do
 
   @doc """
   Get a `%Goth.Token{}` for a particular `scope`. `scope` can be a single
-  scope or multiple scopes joined by a space.
+  scope or multiple scopes joined by a space. See [OAuth 2.0 Scopes for Google APIs](https://developers.google.com/identity/protocols/googlescopes) for all available scopes.
 
   `sub` needs to be specified if impersonation is used to prevent cache
   leaking between users.
