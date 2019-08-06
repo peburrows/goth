@@ -72,7 +72,7 @@ defmodule Goth.ConfigTest do
       |> Enum.each(&Application.delete_env(:goth, &1))
       Application.put_env(:goth, :disabled, true, persistent: true)
 
-      {:ok, pid} = GenServer.start_link(Goth.Config, :ok)
+      {:ok, pid} = GenServer.start_link(Goth.Config, saved_config)
       assert Process.alive?(pid)
     after
       Application.delete_env(:goth, :disabled)

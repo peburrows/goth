@@ -5,13 +5,13 @@ defmodule Goth.Supervisor do
   alias Goth.Config
   alias Goth.TokenStore
 
-  def start_link do
-    Supervisor.start_link(__MODULE__, :ok, name: __MODULE__)
+  def start_link(envs) do
+    Supervisor.start_link(__MODULE__, envs, name: __MODULE__)
   end
 
-  def init(:ok) do
+  def init(envs) do
     children = [
-      worker(Config, []),
+      worker(Config, [envs]),
       worker(TokenStore, [])
     ]
 
