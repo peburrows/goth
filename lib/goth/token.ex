@@ -5,7 +5,7 @@ defmodule Goth.Token do
   but subsequent requests will retrieve the token from Goth's token store.
 
   Goth will automatically refresh access tokens in the background as necessary,
-  10 seconds before they are to expire. After the initial synchronous request to
+  10 seconds (by default) before they are to expire. After the initial synchronous request to
   retrieve an access token, your application should never have to wait for a
   token again.
 
@@ -134,16 +134,17 @@ defmodule Goth.Token do
   @spec refresh!({any(), any()}, any()) :: {:ok, t()}
   def refresh!({account, scope}, sub \\ nil), do: retrieve_and_store!({account, scope}, sub)
 
+  @refresh_window Application.get_env(:goth, :refresh_window, 10)
   def queue_for_refresh(%__MODULE__{} = token) do
     diff = token.expires - :os.system_time(:seconds)
 
-    if diff < 10 do
+    if diff < @refresh_window do
       # just do it immediately
       Task.async(fn ->
         __MODULE__.refresh!(token)
       end)
     else
-      :timer.apply_after((diff - 10) * 1000, __MODULE__, :refresh!, [token])
+      :timer.apply_after((diff - @refresh_window) * 1000, __MODULE__, :refresh!, [token])
     end
   end
 
