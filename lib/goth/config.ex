@@ -42,17 +42,16 @@ defmodule Goth.Config do
   """
   @callback init(config :: Keyword.t()) :: {:ok, Keyword.t()}
 
-  def start_link do
-    GenServer.start_link(__MODULE__, :ok, name: __MODULE__)
+  def start_link(envs) do
+    GenServer.start_link(__MODULE__, envs, name: __MODULE__)
   end
 
-  def init(:ok) do
-    {:ok, config} =
-      :goth
-      |> Application.get_all_env()
+  def init(envs) do
+    {:ok, dynamic_config} =
+      envs
       |> config_mod_init()
 
-    config
+    dynamic_config
     |> Keyword.pop(:disabled, false)
     |> load_and_init()
   end
@@ -66,7 +65,6 @@ defmodule Goth.Config do
     config =
       from_json(app_config) || from_config(app_config) || from_creds_file(app_config) ||
         from_gcloud_adc(app_config) || from_metadata(app_config)
-
     config =
       config
       |> map_config()

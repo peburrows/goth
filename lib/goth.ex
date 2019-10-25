@@ -7,6 +7,7 @@ defmodule Goth do
 
   # for now, just spin up the supervisor
   def start(_type, _args) do
-    Goth.Supervisor.start_link
+    envs = Application.get_all_env(:goth)
+    Goth.Supervisor.start_link(envs)
   end
 end
