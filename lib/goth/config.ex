@@ -129,15 +129,20 @@ defmodule Goth.Config do
   end
 
   defp fetch_creds_filename do
-    default_path = Path.expand("~/.config/gcloud/application_default_credentials.json")
-    case {System.fetch_env("GOOGLE_APPLICATION_CREDENTIALS"), File.regular?(default_path)} do
+    env_name = "GOOGLE_APPLICATION_CREDENTIALS"
+
+    default_path =
+      "~/.config/gcloud/application_default_credentials.json"
+      |> Path.expand
+
+    case {System.fetch_env(env_name), File.regular?(default_path)} do
       {{:ok, filename}, _} -> {:ok, filename}
       {_, true} -> {:ok, default_path}
     end
   end
 
   defp from_creds_file(_config) do
-    case fetch_creds_filename do
+    case fetch_creds_filename() do
       {:ok, filename} -> filename |> File.read!() |> decode_json()
       {:error, _} -> nil
     end
