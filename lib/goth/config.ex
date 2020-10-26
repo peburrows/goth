@@ -135,9 +135,10 @@ defmodule Goth.Config do
       "~/.config/gcloud/application_default_credentials.json"
       |> Path.expand
 
-    case {System.fetch_env(env_name), File.regular?(default_path)} do
-      {{:ok, filename}, _} -> {:ok, filename}
+    case {System.get_env(env_name), File.regular?(default_path)} do
+      {filename, _} when is_binary(filename) -> {:ok, filename}
       {_, true} -> {:ok, default_path}
+      _ -> {:error, "Credentials file not found"}
     end
   end
 
