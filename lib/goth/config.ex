@@ -171,7 +171,7 @@ defmodule Goth.Config do
   defp determine_project_id(config, dynamic_config) do
     case Keyword.get(dynamic_config, :project_id) || System.get_env("GOOGLE_CLOUD_PROJECT") ||
            System.get_env("GCLOUD_PROJECT") || System.get_env("DEVSHELL_PROJECT_ID") ||
-           config["project_id"] do
+           config["project_id"] || config["quota_project_id"] do
       nil ->
         try do
           Client.retrieve_metadata_project()
