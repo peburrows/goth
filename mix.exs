@@ -8,7 +8,6 @@ defmodule Goth.Mixfile do
       description: description(),
       package: package(),
       elixirc_paths: elixirc_paths(Mix.env()),
-      elixirc_options: [warnings_as_errors: true],
       elixir: "~> 1.4",
       deps: deps()
     ]
