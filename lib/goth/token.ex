@@ -1,4 +1,8 @@
 defmodule Goth.Token do
+  @moduledoc """
+  Functions for retrieving the token from the Google API.
+  """
+
   @type t :: %__MODULE__{
           token: String.t(),
           type: String.t(),
@@ -11,45 +15,89 @@ defmodule Goth.Token do
 
   defstruct [:token, :type, :scope, :sub, :expires, :account]
 
-  # Everything below is deprecated.
+  @doc """
+  Fetch the token from the Google API using the given `config`.
 
-  # Interface for retrieving access tokens, from either the `Goth.TokenStore`
-  # or the Google token API. The first request for a token will hit the API,
-  # but subsequent requests will retrieve the token from Goth's token store.
-  #
-  # Goth will automatically refresh access tokens in the background as necessary,
-  # 10 seconds before they are to expire. After the initial synchronous request to
-  # retrieve an access token, your application should never have to wait for a
-  # token again.
-  #
-  # The first call to retrieve an access token for a particular scope blocks while
-  # it hits the API. Subsequent calls pull from the `Goth.TokenStore`,
-  # and should return immediately
-  #
-  #     iex> Goth.Token.for_scope("https://www.googleapis.com/auth/pubsub")
-  #     {:ok, %Goth.Token{token: "23984723",
-  #                       type: "Bearer",
-  #                       scope: "https://www.googleapis.com/auth/pubsub",
-  #                       expires: 1453653825,
-  #                       account: :default}}
-  #
-  # If the passed credentials contain multiple service account, you can change
-  # the first parametter to be {client_email, scopes} to specify which account
-  # to target.
-  #
-  #     iex> Goth.Token.for_scope({"myaccount@project.iam.gserviceaccount.com", "https://www.googleapis.com/auth/pubsub"})
-  #     {:ok, %Goth.Token{token: "23984723",
-  #                       type: "Bearer",
-  #                       scope: "https://www.googleapis.com/auth/pubsub",
-  #                       expires: 1453653825,
-  #                       account: "myaccount@project.iam.gserviceaccount.com"}}
-  #
-  # For using the token on subsequent requests to the Google API, just concatenate
-  # the `type` and `token` to create the authorization header. An example using
-  # [HTTPoison](https://hex.pm/packages/httpoison):
-  #
-  #     {:ok, token} = Goth.Token.for_scope("https://www.googleapis.com/auth/pubsub")
-  #     HTTPoison.get(url, [{"Authorization", "#{token.type} #{token.token}"}])
+  Config may contain the following keys:
+
+    * `:credentials` - a map of credentials.
+
+    * `:scope` - Token scope.
+
+    * `:url` - URL to fetch the token from.
+
+    * `:http_opts` - Options passed to the underlying HTTP client.
+
+  """
+  @doc since: "1.3.0"
+  @spec fetch(map()) :: {:ok, t()} | {:error, term()}
+  def fetch(config) when is_map(config) do
+    jwt = jwt(config.scope, config.credentials)
+    http_opts = Map.get(config, :http_opts, [])
+
+    case request(config.url, jwt, http_opts) do
+      {:ok, %{status_code: 200} = response} ->
+        with {:ok, map} <- Jason.decode(response.body) do
+          %{
+            "access_token" => token,
+            "expires_in" => expires_in,
+            "token_type" => type
+          } = map
+
+          token = %__MODULE__{
+            expires: System.system_time(:second) + expires_in,
+            scope: config.scope,
+            token: token,
+            type: type
+            # sub: ...,
+            # account: ...
+          }
+
+          {:ok, token}
+        end
+
+      {:ok, response} ->
+        message = """
+        unexpected status #{response.status_code} from Google
+
+        #{response.body}
+        """
+
+        {:error, RuntimeError.exception(message)}
+
+      {:error, exception} ->
+        {:error, exception}
+    end
+  end
+
+  defp jwt(scope, %{
+         "private_key" => private_key,
+         "client_email" => client_email,
+         "token_uri" => token_uri
+       }) do
+    jwk = JOSE.JWK.from_pem(private_key)
+    header = %{"alg" => "RS256", "typ" => "JWT"}
+    unix_time = System.system_time(:second)
+
+    claim_set = %{
+      "iss" => client_email,
+      "scope" => scope,
+      "aud" => token_uri,
+      "exp" => unix_time + 3600,
+      "iat" => unix_time
+    }
+
+    JOSE.JWT.sign(jwk, header, claim_set) |> JOSE.JWS.compact() |> elem(1)
+  end
+
+  defp request(url, jwt, opts) do
+    headers = [{"content-type", "application/x-www-form-urlencoded"}]
+    grant_type = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+    body = "grant_type=#{grant_type}&assertion=#{jwt}"
+    HTTPoison.request(:post, url, body, headers, opts)
+  end
+
+  # Everything below is deprecated.
 
   alias Goth.TokenStore
   alias Goth.Client
