@@ -1,20 +1,20 @@
 defmodule Goth.Config do
-  @moduledoc """
-  `Goth.Config` is a `GenServer` that holds the current configuration.
-  This configuration is loaded from one of four places:
+  @moduledoc false
 
-  1. a JSON string passed in via your application's config
-  2. a ENV variable passed in via your application's config
-  3. The Application Default Credentials, as defined by
-     https://developers.google.com/identity/protocols/application-default-credentials
-  4. an `init/1` callback on a custom config module. This init function is
-     passed the current config and must return an `{:ok, config}` tuple
+  # `Goth.Config` is a `GenServer` that holds the current configuration.
+  # This configuration is loaded from one of four places:
 
-  The `Goth.Config` server exists mostly for other parts of your application
-  (or other libraries) to pull the current configuration state,
-  via `Goth.Config.get/1`. If necessary, you can also set config values via
-  `Goth.Config.set/2`
-  """
+  # 1. a JSON string passed in via your application's config
+  # 2. a ENV variable passed in via your application's config
+  # 3. The Application Default Credentials, as defined by
+  #    https://developers.google.com/identity/protocols/application-default-credentials
+  # 4. an `init/1` callback on a custom config module. This init function is
+  #    passed the current config and must return an `{:ok, config}` tuple
+
+  # The `Goth.Config` server exists mostly for other parts of your application
+  # (or other libraries) to pull the current configuration state,
+  # via `Goth.Config.get/1`. If necessary, you can also set config values via
+  # `Goth.Config.set/2`
 
   use GenServer
   alias Goth.Client
@@ -65,6 +65,7 @@ defmodule Goth.Config do
     config =
       from_json(app_config) || from_config(app_config) || from_creds_file(app_config) ||
         from_gcloud_adc(app_config) || from_metadata(app_config)
+
     config =
       config
       |> map_config()

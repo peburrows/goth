@@ -1,4 +1,4 @@
-defmodule Goth.ConfigTest do
+defmodule Goth.Legacy.ConfigTest do
   use ExUnit.Case
   alias Goth.Config
 
@@ -45,15 +45,17 @@ defmodule Goth.ConfigTest do
   end
 
   test "dynamically add configs without interfering with existing accounts" do
-    original_config = "test/data/test-credentials.json"
-    |> Path.expand()
-    |> File.read!()
-    |> Jason.decode!()
+    original_config =
+      "test/data/test-credentials.json"
+      |> Path.expand()
+      |> File.read!()
+      |> Jason.decode!()
 
-    dynamic_config = "test/data/test-credentials-2.json"
-    |> Path.expand()
-    |> File.read!()
-    |> Jason.decode!()
+    dynamic_config =
+      "test/data/test-credentials-2.json"
+      |> Path.expand()
+      |> File.read!()
+      |> Jason.decode!()
 
     Config.add_config(dynamic_config)
 
@@ -67,15 +69,18 @@ defmodule Goth.ConfigTest do
 
   test "Config can start up with no config when disabled" do
     saved_config = Application.get_all_env(:goth)
+
     try do
       [:json, :metadata_url, :config_root_dir]
       |> Enum.each(&Application.delete_env(:goth, &1))
+
       Application.put_env(:goth, :disabled, true, persistent: true)
 
       {:ok, pid} = GenServer.start_link(Goth.Config, saved_config)
       assert Process.alive?(pid)
     after
       Application.delete_env(:goth, :disabled)
+
       Enum.each(saved_config, fn {k, v} ->
         Application.put_env(:goth, k, v, persistent: true)
       end)

@@ -9,6 +9,7 @@ defmodule Goth.Supervisor do
     Supervisor.start_link(__MODULE__, envs, name: __MODULE__)
   end
 
+  @impl true
   def init(envs) do
     children = [
       {Config, envs},
