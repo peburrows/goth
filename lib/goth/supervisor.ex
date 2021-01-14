@@ -11,10 +11,10 @@ defmodule Goth.Supervisor do
 
   def init(envs) do
     children = [
-      worker(Config, [envs]),
-      worker(TokenStore, [])
+      {Config, envs},
+      TokenStore
     ]
 
-    supervise(children, strategy: :one_for_one)
+    Supervisor.init(children, strategy: :one_for_one)
   end
 end
