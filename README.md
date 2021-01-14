@@ -1,4 +1,7 @@
+![CI](https://github.com/peburrows/goth/workflows/CI/badge.svg)
+
 # Goth
+
 Google + Auth = Goth
 
 A simple library to generate and retrieve OAuth2 tokens for use with Google Cloud Service accounts.
