@@ -1,5 +1,3 @@
-[![Build Status](https://travis-ci.org/peburrows/goth.svg?branch=master)](https://travis-ci.org/peburrows/goth)
-
 # Goth
 Google + Auth = Goth
 
