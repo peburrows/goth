@@ -12,7 +12,7 @@ It can either retrieve tokens using service account credentials or from Google's
 1. Add Goth to your list of dependencies in `mix.exs`:
   ```elixir
   def deps do
-    [{:goth, "~> 1.1.0"}]
+    [{:goth, "~> 1.2.0"}]
   end
   ```
 
