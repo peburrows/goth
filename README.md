@@ -103,20 +103,3 @@ end
 ```
 
 For more information on earlier versions of Goth, [see v1.2.0 documentation on hexdocs.pm](https://hexdocs.pm/goth/1.2.0).
-
-# TODO
-
-We can close these tickets:
-
-* https://github.com/peburrows/goth/issues/23, https://github.com/peburrows/goth/pull/54 - `:http_opts` option on Goth.start_link/1 and Goth.Token.fetch/1
-* https://github.com/peburrows/goth/issues/35
-* https://github.com/peburrows/goth/issues/53 - seems a problem with Goth.Config, can be closed as we have new api
-* https://github.com/peburrows/goth/issues/57 - we now have a slightly better error message, that the expected shape doesn't match
-* https://github.com/peburrows/goth/issues/65 - they can start different Goth instances for different test scenarios. Or use Goth.Token.fetch/1 directly to bypass the cache.
-* https://github.com/peburrows/goth/issues/67
-* https://github.com/peburrows/goth/issues/69
-* https://github.com/peburrows/goth/issues/72 - bug with older Hackney on newer OTP
-* https://github.com/peburrows/goth/issues/77, https://github.com/peburrows/goth/pull/79 - do we want to support this, or users would explicitly load from GOOGLE_APPLICATION_CREDENTIALS env or ~/.config/gcloud/application_default_credentials.json in their supervision tree?
-* https://github.com/peburrows/goth/pull/66 - `:refresh_before` option on `Goth.start_link/1`.
-* https://github.com/peburrows/goth/pull/76
-* https://github.com/peburrows/goth/pull/80
