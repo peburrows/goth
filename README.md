@@ -10,11 +10,13 @@ A simple library to generate and retrieve OAuth2 tokens for use with Google Clou
 
 ## Installation
 
+**Note:** below are instructions for using the upcoming v1.3.0 version. For more information on earlier versions of Goth, [see v1.2.0 documentation on hexdocs.pm](https://hexdocs.pm/goth/1.2.0) 
+
 1. Add Goth to your list of dependencies in `mix.exs`:
 
    ```elixir
    def deps do
-     [{:goth, "~> 1.3"}]
+     [{:goth, github: "peburrows/goth"}]
    end
    ```
 
