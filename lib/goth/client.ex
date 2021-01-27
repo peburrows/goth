@@ -1,39 +1,35 @@
 defmodule Goth.Client do
+  @moduledoc false
+
+  # `Goth.Client` is the module through which all interaction with Google's APIs flows.
+  # For the most part, you probably don't want to use this module directly, but instead
+  # use the other modules that cache and wrap the underlying API calls.
+  #
+  # ## Available Options
+  #
+  # The first parameter is either the token scopes or a tuple of the service
+  # account client email and its scopes.
+  #
+  # Additional token attributes are controlled through options. Available values:
+  #
+  # - `iat` - The time the assertion was issued, default to now.
+  # - `sub` - The email address of the user for which the application is requesting delegated access.
+  #   Default values is taken from the config `:actor_email`.
+  #
+  # See
+  # [Google's Documentation](https://developers.google.com/identity/protocols/OAuth2ServiceAccount#authorizingrequests)
+  # for more details.
+
   alias Goth.Config
   alias Goth.Token
 
-  @moduledoc """
-  `Goth.Client` is the module through which all interaction with Google's APIs flows.
-  For the most part, you probably don't want to use this module directly, but instead
-  use the other modules that cache and wrap the underlying API calls.
-
-  ## Available Options
-
-  The first parameter is either the token scopes or a tuple of the service
-  account client email and its scopes.
-
-  Additional token attributes are controlled through options. Available values:
-
-  - `iat` - The time the assertion was issued, default to now.
-  - `sub` - The email address of the user for which the application is requesting delegated access.
-    Default values is taken from the config `:actor_email`.
-
-  See
-  [Google's Documentation](https://developers.google.com/identity/protocols/OAuth2ServiceAccount#authorizingrequests)
-  for more details.
-
-  """
-
-  @doc """
-  *Note:* Most often, you'll want to use `Goth.Token.for_scope/1` instead of this method.
-  As the docs for `Goth.Token.for_scope/1` note, it will return a cached token if one
-  already exists, thus saving you the cost of a round-trip to the server to generate a
-  new token.
-
-  `Goth.Client.get_access_token/1`, on the other hand will always hit the server to
-  retrieve a new token.
-  """
-
+  # *Note:* Most often, you'll want to use `Goth.Token.for_scope/1` instead of this method.
+  # As the docs for `Goth.Token.for_scope/1` note, it will return a cached token if one
+  # already exists, thus saving you the cost of a round-trip to the server to generate a
+  # new token.
+  #
+  # `Goth.Client.get_access_token/1`, on the other hand will always hit the server to
+  # retrieve a new token.
   def get_access_token(scope), do: get_access_token({:default, scope}, [])
 
   def get_access_token(scope, opts) when is_binary(scope) and is_list(opts) do

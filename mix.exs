@@ -8,14 +8,14 @@ defmodule Goth.Mixfile do
       description: description(),
       package: package(),
       elixirc_paths: elixirc_paths(Mix.env()),
-      elixir: "~> 1.4",
+      elixir: "~> 1.10",
       deps: deps()
     ]
   end
 
   def application do
     [
-      mod: {Goth, []}
+      mod: {Goth.Application, []}
     ]
   end
 

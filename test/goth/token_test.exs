@@ -1,203 +1,55 @@
 defmodule Goth.TokenTest do
-  use ExUnit.Case
-  alias Goth.Token
+  use ExUnit.Case, async: true
 
-  setup do
+  test "fetch/1" do
     bypass = Bypass.open()
-    Application.put_env(:goth, :endpoint, "http://localhost:#{bypass.port}")
-    Application.put_env(:goth, :token_source, :oauth)
-    {:ok, bypass: bypass}
-  end
-
-  test "it can generate from response JSON" do
-    json =
-      ~s({"token_type":"Bearer","expires_in":3600,"access_token":"1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M"})
-
-    assert %Token{
-             token: "1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M",
-             type: "Bearer",
-             expires: _exp
-           } = Token.from_response_json("scope", json)
-  end
-
-  test "it can generate from response JSON with sub" do
-    json =
-      ~s({"token_type":"Bearer","expires_in":3600,"access_token":"1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M"})
-
-    assert %Token{
-             token: "1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M",
-             type: "Bearer",
-             sub: "sub@example.com",
-             expires: _exp,
-             account: :default
-           } = Token.from_response_json("scope", "sub@example.com", json)
-  end
-
-  test "it can generate from response JSON with sub and account" do
-    json =
-      ~s({"token_type":"Bearer","expires_in":3600,"access_token":"1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M"})
-
-    assert %Token{
-             token: "1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M",
-             type: "Bearer",
-             sub: "sub@example.com",
-             expires: _exp,
-             account: "account"
-           } = Token.from_response_json({"account", "scope"}, "sub@example.com", json)
-  end
-
-  test "it calculates the expiration from the expires_in attr" do
-    json =
-      ~s({"token_type":"Bearer","expires_in":3600,"access_token":"1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M"})
-
-    token = Token.from_response_json("my-scope", json)
-    assert token.expires > :os.system_time(:seconds) + 3000
-  end
-
-  test "it will pull a token from the API the first time", %{bypass: bypass} do
-    Bypass.expect(bypass, fn conn ->
-      Plug.Conn.resp(
-        conn,
-        201,
-        Jason.encode!(%{"access_token" => "123", "token_type" => "Bearer", "expires_in" => 3600})
-      )
-    end)
-
-    assert {:ok, %Token{token: "123", account: :default}} = Token.for_scope("random")
-
-    assert {:ok, %Token{token: "123", account: :default}} =
-             Token.for_scope("random", "sub@example.com")
-  end
-
-  test "it will not raise when token cannot be retrieved from the API" do
-    orig = Application.get_env(:goth, :endpoint)
-    Application.put_env(:goth, :endpoint, "http://lkjoine.lkj")
-    assert {:error, _} = Token.for_scope("lkjlkjlkj")
-    Application.put_env(:goth, :endpoint, orig)
-  end
-
-  test "it will pull a token for a specific account", %{bypass: bypass} do
-    # The test configuration sets an example JSON blob. We override it briefly
-    # during this test.
-    current_json = Application.get_env(:goth, :json)
-    new_json = "test/data/test-multicredentials.json" |> Path.expand() |> File.read!()
-
-    Application.put_env(:goth, :json, new_json, persistent: true)
-    Application.stop(:goth)
-
-    Application.start(:goth)
 
     Bypass.expect(bypass, fn conn ->
-      Plug.Conn.resp(
-        conn,
-        201,
-        Jason.encode!(%{"access_token" => "123", "token_type" => "Bearer", "expires_in" => 3600})
-      )
+      body = ~s|{"access_token":"dummy","expires_in":3599,"token_type":"Bearer"}|
+      Plug.Conn.resp(conn, 200, body)
     end)
 
-    assert {:ok,
-            %Token{
-              token: "123",
-              account: "test-multicredentials-1@my-project.iam.gserviceaccount.com"
-            }} =
-             Token.for_scope(
-               {"test-multicredentials-1@my-project.iam.gserviceaccount.com", "random"}
-             )
+    config = %{
+      credentials: random_credentials(),
+      url: "http://localhost:#{bypass.port}",
+      scope: "https://www.googleapis.com/auth/cloud-platform"
+    }
 
-    assert {:ok,
-            %Token{
-              token: "123",
-              account: "test-multicredentials-1@my-project.iam.gserviceaccount.com"
-            }} =
-             Token.for_scope(
-               {"test-multicredentials-1@my-project.iam.gserviceaccount.com", "random"},
-               "sub@example.com"
-             )
-
-    # Restore original config
-    Application.put_env(:goth, :json, current_json, persistent: true)
-    System.delete_env("GOOGLE_APPLICATION_CREDENTIALS")
-    Application.stop(:goth)
-    Application.start(:goth)
+    {:ok, token} = Goth.Token.fetch(config)
+    assert token.token == "dummy"
   end
 
-  test "it will pull a token from the token store if cached", %{bypass: bypass} do
-    Bypass.expect(bypass, fn conn ->
-      Plug.Conn.resp(
-        conn,
-        201,
-        Jason.encode!(%{"access_token" => "123", "token_type" => "Bearer", "expires_in" => 3600})
-      )
+  test "fetch/1 with invalid response" do
+    bypass = Bypass.open()
+
+    Bypass.expect_once(bypass, fn conn ->
+      body = ~s|bad|
+      Plug.Conn.resp(conn, 200, body)
     end)
 
-    assert {:ok, %Token{token: access_token}} = Token.for_scope("another-random")
-    assert access_token != nil
+    config = %{
+      credentials: random_credentials(),
+      url: "http://localhost:#{bypass.port}",
+      scope: "https://www.googleapis.com/auth/cloud-platform"
+    }
+
+    {:error, %Jason.DecodeError{}} = Goth.Token.fetch(config)
 
     Bypass.down(bypass)
-
-    assert {:ok, %Token{token: ^access_token}} = Token.for_scope("another-random")
+    {:error, %HTTPoison.Error{reason: :econnrefused}} = Goth.Token.fetch(config)
   end
 
-  test "it will pull a token from the token store if cached when sub is provided", %{
-    bypass: bypass
-  } do
-    {:ok, tries} = Agent.start_link(fn -> 0 end)
-
-    Bypass.expect(bypass, fn conn ->
-      Agent.update(tries, fn c -> c + 1 end)
-      times = Agent.get(tries, fn c -> c end)
-
-      resp =
-        if times == 1 do
-          %{"access_token" => "123", "token_type" => "Bearer", "expires_in" => 3600}
-        else
-          %{"access_token" => "123-sub", "token_type" => "Bearer", "expires_in" => 3600}
-        end
-
-      Plug.Conn.resp(
-        conn,
-        201,
-        Jason.encode!(resp)
-      )
-    end)
-
-    assert {:ok, %Token{token: access_token}} =
-             Token.for_scope("another-random-sub", "sub@example.com")
-
-    assert access_token != nil
-
-    assert {:ok, %Token{token: ^access_token}} =
-             Token.for_scope("another-random-sub", "sub@example.com")
-
-    {:ok, %Token{token: access_token_2}} = Token.for_scope("another-random-sub")
-    assert access_token != access_token_2
+  defp random_credentials() do
+    %{
+      "private_key" => random_private_key(),
+      "client_email" => "alice@example.com",
+      "token_uri" => "/"
+    }
   end
 
-  test "refreshing a token hits the API", %{bypass: bypass} do
-    {:ok, tries} = Agent.start_link(fn -> 0 end)
-
-    Bypass.expect(bypass, "POST", "/oauth2/v4/token", fn conn ->
-      Agent.update(tries, fn c -> c + 1 end)
-      times = Agent.get(tries, fn c -> c end)
-
-      resp =
-        if times == 1 do
-          %{"access_token" => "123", "token_type" => "Bearer", "expires_in" => 3600}
-        else
-          %{"access_token" => "321", "token_type" => "Bearer", "expires_in" => 3600}
-        end
-
-      Plug.Conn.resp(
-        conn,
-        201,
-        Jason.encode!(resp)
-      )
-    end)
-
-    assert {:ok, token} = Token.for_scope("first")
-    assert token.token != nil
-
-    assert {:ok, %Token{token: at2}} = Token.refresh!(token)
-    assert token.token != at2
+  defp random_private_key() do
+    private_key = :public_key.generate_key({:rsa, 2048, 65537})
+    {:ok, private_key}
+    :public_key.pem_encode([:public_key.pem_entry_encode(:RSAPrivateKey, private_key)])
   end
 end

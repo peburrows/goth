@@ -1,69 +1,117 @@
 defmodule Goth.Token do
-  @moduledoc ~S"""
-  Interface for retrieving access tokens, from either the `Goth.TokenStore`
-  or the Google token API. The first request for a token will hit the API,
-  but subsequent requests will retrieve the token from Goth's token store.
-
-  Goth will automatically refresh access tokens in the background as necessary,
-  10 seconds before they are to expire. After the initial synchronous request to
-  retrieve an access token, your application should never have to wait for a
-  token again.
-
-  The first call to retrieve an access token for a particular scope blocks while
-  it hits the API. Subsequent calls pull from the `Goth.TokenStore`,
-  and should return immediately
-
-      iex> Goth.Token.for_scope("https://www.googleapis.com/auth/pubsub")
-      {:ok, %Goth.Token{token: "23984723",
-                        type: "Bearer",
-                        scope: "https://www.googleapis.com/auth/pubsub",
-                        expires: 1453653825,
-                        account: :default}}
-
-  If the passed credentials contain multiple service account, you can change
-  the first parametter to be {client_email, scopes} to specify which account
-  to target.
-
-      iex> Goth.Token.for_scope({"myaccount@project.iam.gserviceaccount.com", "https://www.googleapis.com/auth/pubsub"})
-      {:ok, %Goth.Token{token: "23984723",
-                        type: "Bearer",
-                        scope: "https://www.googleapis.com/auth/pubsub",
-                        expires: 1453653825,
-                        account: "myaccount@project.iam.gserviceaccount.com"}}
-
-  For using the token on subsequent requests to the Google API, just concatenate
-  the `type` and `token` to create the authorization header. An example using
-  [HTTPoison](https://hex.pm/packages/httpoison):
-
-      {:ok, token} = Goth.Token.for_scope("https://www.googleapis.com/auth/pubsub")
-      HTTPoison.get(url, [{"Authorization", "#{token.type} #{token.token}"}])
+  @moduledoc """
+  Functions for retrieving the token from the Google API.
   """
-
-  alias Goth.TokenStore
-  alias Goth.Client
 
   @type t :: %__MODULE__{
           token: String.t(),
           type: String.t(),
           scope: String.t(),
-          sub: String.t() | nil,
-          expires: non_neg_integer,
-          account: String.t()
+          expires: non_neg_integer
+          # TODO: do we still need these?
+          # account: String.t()
+          # sub: String.t() | nil
         }
 
   defstruct [:token, :type, :scope, :sub, :expires, :account]
 
   @doc """
-  Get a `%Goth.Token{}` for a particular `scope`. `scope` can be a single
-  scope or multiple scopes joined by a space. See [OAuth 2.0 Scopes for Google APIs](https://developers.google.com/identity/protocols/googlescopes) for all available scopes.
+  Fetch the token from the Google API using the given `config`.
 
-  `sub` needs to be specified if impersonation is used to prevent cache
-  leaking between users.
+  Config may contain the following keys:
 
-  ## Example
-      iex> Token.for_scope("https://www.googleapis.com/auth/pubsub")
-      {:ok, %Goth.Token{expires: ..., token: "...", type: "..."} }
+    * `:credentials` - a map of credentials.
+
+    * `:scope` - Token scope.
+
+    * `:url` - URL to fetch the token from.
+
+    * `:http_opts` - Options passed to the underlying HTTP client.
+
   """
+  @doc since: "1.3.0"
+  @spec fetch(map()) :: {:ok, t()} | {:error, term()}
+  def fetch(config) when is_map(config) do
+    jwt = jwt(config.scope, config.credentials)
+    http_opts = Map.get(config, :http_opts, [])
+
+    case request(config.url, jwt, http_opts) do
+      {:ok, %{status_code: 200} = response} ->
+        with {:ok, map} <- Jason.decode(response.body) do
+          %{
+            "access_token" => token,
+            "expires_in" => expires_in,
+            "token_type" => type
+          } = map
+
+          token = %__MODULE__{
+            expires: System.system_time(:second) + expires_in,
+            scope: config.scope,
+            token: token,
+            type: type
+            # sub: ...,
+            # account: ...
+          }
+
+          {:ok, token}
+        end
+
+      {:ok, response} ->
+        message = """
+        unexpected status #{response.status_code} from Google
+
+        #{response.body}
+        """
+
+        {:error, RuntimeError.exception(message)}
+
+      {:error, exception} ->
+        {:error, exception}
+    end
+  end
+
+  defp jwt(scope, %{
+         "private_key" => private_key,
+         "client_email" => client_email,
+         "token_uri" => token_uri
+       }) do
+    jwk = JOSE.JWK.from_pem(private_key)
+    header = %{"alg" => "RS256", "typ" => "JWT"}
+    unix_time = System.system_time(:second)
+
+    claim_set = %{
+      "iss" => client_email,
+      "scope" => scope,
+      "aud" => token_uri,
+      "exp" => unix_time + 3600,
+      "iat" => unix_time
+    }
+
+    JOSE.JWT.sign(jwk, header, claim_set) |> JOSE.JWS.compact() |> elem(1)
+  end
+
+  defp request(url, jwt, opts) do
+    headers = [{"content-type", "application/x-www-form-urlencoded"}]
+    grant_type = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+    body = "grant_type=#{grant_type}&assertion=#{jwt}"
+    HTTPoison.request(:post, url, body, headers, opts)
+  end
+
+  # Everything below is deprecated.
+
+  alias Goth.TokenStore
+  alias Goth.Client
+
+  # Get a `%Goth.Token{}` for a particular `scope`. `scope` can be a single
+  # scope or multiple scopes joined by a space. See [OAuth 2.0 Scopes for Google APIs](https://developers.google.com/identity/protocols/googlescopes) for all available scopes.
+
+  # `sub` needs to be specified if impersonation is used to prevent cache
+  # leaking between users.
+
+  # ## Example
+  #     iex> Token.for_scope("https://www.googleapis.com/auth/pubsub")
+  #     {:ok, %Goth.Token{expires: ..., token: "...", type: "..."} }
+  @doc false
   def for_scope(info, sub \\ nil)
 
   @spec for_scope(scope :: String.t(), sub :: String.t() | nil) :: {:ok, t} | {:error, any()}
@@ -83,9 +131,8 @@ defmodule Goth.Token do
     end
   end
 
-  @doc """
-  Parse a successful JSON response from Google's token API and extract a `%Goth.Token{}`
-  """
+  @doc false
+  # Parse a successful JSON response from Google's token API and extract a `%Goth.Token{}`
   def from_response_json(scope, sub \\ nil, json)
 
   @spec from_response_json(String.t(), String.t() | nil, String.t()) :: t
@@ -120,20 +167,21 @@ defmodule Goth.Token do
     }
   end
 
-  @doc """
-  Retrieve a new access token from the API. This is useful for expired tokens,
-  although `Goth` automatically handles refreshing tokens for you, so you should
-  rarely if ever actually need to call this method manually.
-  """
+  # Retrieve a new access token from the API. This is useful for expired tokens,
+  # although `Goth` automatically handles refreshing tokens for you, so you should
+  # rarely if ever actually need to call this method manually.
+  @doc false
   @spec refresh!(t() | {any(), any()}) :: {:ok, t()}
   def refresh!(%__MODULE__{account: account, scope: scope, sub: sub}),
     do: refresh!({account, scope}, sub)
 
   def refresh!(%__MODULE__{account: account, scope: scope}), do: refresh!({account, scope})
 
+  @doc false
   @spec refresh!({any(), any()}, any()) :: {:ok, t()}
   def refresh!({account, scope}, sub \\ nil), do: retrieve_and_store!({account, scope}, sub)
 
+  @doc false
   def queue_for_refresh(%__MODULE__{} = token) do
     diff = token.expires - :os.system_time(:seconds)
 
