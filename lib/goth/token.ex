@@ -30,7 +30,7 @@ defmodule Goth.Token do
 
   Config may contain the following keys:
 
-    * `:credentials` - a map of credentials.
+    * `:credentials` - a map of credentials or a tuple `{:instance, String.t()}`.
 
     * `:scope` - Token scope, defaults to `#{inspect(@default_scope)}`.
 
@@ -88,6 +88,9 @@ defmodule Goth.Token do
     end
   end
 
+  # Override for instance metadata
+  defp jwt(_scope, {:instance, _} = instance), do: instance
+
   defp jwt(scope, %{
          "private_key" => private_key,
          "client_email" => client_email,
@@ -106,6 +109,12 @@ defmodule Goth.Token do
     }
 
     JOSE.JWT.sign(jwk, header, claim_set) |> JOSE.JWS.compact() |> elem(1)
+  end
+
+  defp request(http_client, url, {:instance, account}) do
+    headers = [{"metadata-flavor", "Google"}]
+    url = "#{url}/computeMetadata/v1/instance/#{account}/token"
+    Goth.HTTPClient.request(http_client, :get, url, headers, "", [])
   end
 
   defp request(http_client, url, jwt) do

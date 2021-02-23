@@ -39,6 +39,25 @@ defmodule Goth.TokenTest do
     {:error, :econnrefused} = Goth.Token.fetch(config)
   end
 
+  test "fetch/1 from instance metadata" do
+    bypass = Bypass.open()
+
+    Bypass.expect(bypass, fn conn ->
+      assert conn.request_path =~ ~r[/computeMetadata/v1/instance/default/token]
+      body = ~s|{"access_token":"dummy","expires_in":3599,"token_type":"Bearer"}|
+      Plug.Conn.resp(conn, 200, body)
+    end)
+
+    config = %{
+      credentials: {:instance, "default"},
+      url: "http://localhost:#{bypass.port}",
+      scope: nil
+    }
+
+    {:ok, token} = Goth.Token.fetch(config)
+    assert token.token == "dummy"
+  end
+
   defp random_credentials() do
     %{
       "private_key" => random_private_key(),
