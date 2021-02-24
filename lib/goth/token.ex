@@ -43,10 +43,15 @@ defmodule Goth.Token do
   @doc since: "1.3.0"
   @spec fetch(map()) :: {:ok, t()} | {:error, term()}
   def fetch(config) when is_map(config) do
-    jwt = jwt(config.scope, config.credentials)
-    http_opts = Map.get(config, :http_opts, [])
+    config =
+      config
+      |> Map.put_new(:url, @default_url)
+      |> Map.put_new(:scope, @default_scope)
+      |> Map.put_new(:http_opts, [])
 
-    case request(config.url, jwt, http_opts) do
+    jwt = jwt(config.scope, config.credentials)
+
+    case request(config.url, jwt, config.http_opts) do
       {:ok, %{status_code: 200} = response} ->
         with {:ok, map} <- Jason.decode(response.body) do
           %{
