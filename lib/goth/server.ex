@@ -18,7 +18,7 @@ defmodule Goth.Server do
     :scope,
     :cooldown,
     :refresh_before,
-    http_opts: [],
+    :http_client,
     retries: @max_retries
   ]
 
@@ -39,6 +39,11 @@ defmodule Goth.Server do
 
   @impl true
   def init(opts) when is_list(opts) do
+    opts =
+      Keyword.update!(opts, :http_client, fn {module, opts} ->
+        {module, module.init(opts)}
+      end)
+
     state = struct!(__MODULE__, opts)
 
     # given calculating JWT for each request is expensive, we do it once

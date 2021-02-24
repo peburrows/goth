@@ -36,8 +36,8 @@ defmodule Goth.Token do
 
     * `:url` - URL to fetch the token from, defaults to `#{inspect(@default_url)}`.
 
-    * `:http_opts` - Options passed to the underlying HTTP client, defaults to
-      `[]`.
+    * `:http_client` - HTTP client configuration, defaults to using `Goth.HTTPClient.Hackney`.
+      See `Goth.HTTPClient` for more information.
 
   """
   @doc since: "1.3.0"
@@ -47,12 +47,14 @@ defmodule Goth.Token do
       config
       |> Map.put_new(:url, @default_url)
       |> Map.put_new(:scope, @default_scope)
-      |> Map.put_new(:http_opts, [])
+      |> Map.put_new_lazy(:http_client, fn ->
+        {Goth.HTTPClient.Hackney, Goth.HTTPClient.Hackney.init([])}
+      end)
 
     jwt = jwt(config.scope, config.credentials)
 
-    case request(config.url, jwt, config.http_opts) do
-      {:ok, %{status_code: 200} = response} ->
+    case request(config.http_client, config.url, jwt) do
+      {:ok, %{status: 200} = response} ->
         with {:ok, map} <- Jason.decode(response.body) do
           %{
             "access_token" => token,
@@ -74,7 +76,7 @@ defmodule Goth.Token do
 
       {:ok, response} ->
         message = """
-        unexpected status #{response.status_code} from Google
+        unexpected status #{response.status} from Google
 
         #{response.body}
         """
@@ -106,11 +108,11 @@ defmodule Goth.Token do
     JOSE.JWT.sign(jwk, header, claim_set) |> JOSE.JWS.compact() |> elem(1)
   end
 
-  defp request(url, jwt, opts) do
+  defp request(http_client, url, jwt) do
     headers = [{"content-type", "application/x-www-form-urlencoded"}]
     grant_type = "urn:ietf:params:oauth:grant-type:jwt-bearer"
     body = "grant_type=#{grant_type}&assertion=#{jwt}"
-    HTTPoison.request(:post, url, body, headers, opts)
+    Goth.HTTPClient.request(http_client, :post, url, headers, body, [])
   end
 
   # Everything below is deprecated.
