@@ -65,16 +65,16 @@ the following:
 
 ```elixir
 defmodule MyApp.Application do
-     use Application
+  use Application
 
-     def start(_type, _args) do
-       children = [
-         {Goth, name: MyApp.Goth, url: "http://metadata.google.internal", credentials: {:instance, "default"}}
-       ]
+  def start(_type, _args) do
+    children = [
+      {Goth, name: MyApp.Goth, url: "http://metadata.google.internal", credentials: {:instance, "default"}}
+    ]
 
-       Supervisor.start_link(children, strategy: :one_for_one)
-     end
-   end
+    Supervisor.start_link(children, strategy: :one_for_one)
+  end
+end
 ```
 
 <!-- MDOC !-->
