@@ -48,8 +48,9 @@ defmodule Goth do
 
     * `:url` - URL to fetch the token from, defaults to `#{inspect(@url)}`.
 
-    * `:http_opts` - Options passed to the underlying HTTP client, defaults to `[]`.
-
+    * `:http_client` - a `{module, opts}` tuple, where `module` implements the
+      `Goth.HTTPClient` behaviour and `opts` is a keywords list to initialize the client with.
+      Defaults to `{Goth.HTTPClient.Hackney, []}`.
   """
   @doc since: "1.3.0"
   def start_link(opts) do
@@ -72,6 +73,6 @@ defmodule Goth do
     |> Keyword.put_new(:url, @url)
     |> Keyword.put_new(:cooldown, @cooldown)
     |> Keyword.put_new(:refresh_before, @refresh_before_minutes * 60)
-    |> Keyword.put_new(:http_opts, [])
+    |> Keyword.put_new(:http_client, {Goth.HTTPClient.Hackney, []})
   end
 end

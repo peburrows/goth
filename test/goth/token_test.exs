@@ -36,7 +36,7 @@ defmodule Goth.TokenTest do
     {:error, %Jason.DecodeError{}} = Goth.Token.fetch(config)
 
     Bypass.down(bypass)
-    {:error, %HTTPoison.Error{reason: :econnrefused}} = Goth.Token.fetch(config)
+    {:error, :econnrefused} = Goth.Token.fetch(config)
   end
 
   defp random_credentials() do

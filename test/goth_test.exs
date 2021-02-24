@@ -39,6 +39,7 @@ defmodule GothTest do
       name: test,
       credentials: random_credentials(),
       url: "http://localhost:#{bypass.port}",
+      http_client: {Goth.HTTPClient.Hackney, []},
       cooldown: 10
     )
 
