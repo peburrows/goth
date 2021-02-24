@@ -15,6 +15,16 @@ defmodule Goth.Token do
 
   defstruct [:token, :type, :scope, :sub, :expires, :account]
 
+  @default_url "https://www.googleapis.com/oauth2/v4/token"
+
+  @doc false
+  def default_url(), do: @default_url
+
+  @default_scope "https://www.googleapis.com/auth/cloud-platform"
+
+  @doc false
+  def default_scope(), do: @default_scope
+
   @doc """
   Fetch the token from the Google API using the given `config`.
 
@@ -22,11 +32,12 @@ defmodule Goth.Token do
 
     * `:credentials` - a map of credentials.
 
-    * `:scope` - Token scope.
+    * `:scope` - Token scope, defaults to `#{@default_scope}`.
 
-    * `:url` - URL to fetch the token from.
+    * `:url` - URL to fetch the token from, defaults to `#{@default_url}`.
 
-    * `:http_opts` - Options passed to the underlying HTTP client.
+    * `:http_opts` - Options passed to the underlying HTTP client, defaults to
+      `[]`.
 
   """
   @doc since: "1.3.0"
