@@ -32,9 +32,9 @@ defmodule Goth.Token do
 
     * `:credentials` - a map of credentials.
 
-    * `:scope` - Token scope, defaults to `#{@default_scope}`.
+    * `:scope` - Token scope, defaults to `#{inspect(@default_scope)}`.
 
-    * `:url` - URL to fetch the token from, defaults to `#{@default_url}`.
+    * `:url` - URL to fetch the token from, defaults to `#{inspect(@default_url)}`.
 
     * `:http_opts` - Options passed to the underlying HTTP client, defaults to
       `[]`.
