@@ -10,12 +10,14 @@ defmodule Goth do
   Fetches the token.
 
   If the token is not in the cache, we immediately request it.
+
+  To fetch the token bypassing the cache, see `Goth.Token.fetch/1`.
   """
   @doc since: "1.3.0"
   defdelegate fetch(server), to: Goth.Server
 
-  @scope "https://www.googleapis.com/auth/cloud-platform"
-  @url "https://www.googleapis.com/oauth2/v4/token"
+  @url Goth.Token.default_url()
+  @scope Goth.Token.default_scope()
   @cooldown 1000
   @refresh_before_minutes 5
 
