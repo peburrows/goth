@@ -30,7 +30,8 @@ defmodule Goth.Token do
 
   Config may contain the following keys:
 
-    * `:credentials` - a map of credentials or a tuple `{:instance, String.t()}`.
+    * `:credentials` - a map of credentials or a tuple `{:instance, account}` (See
+      "Google Compute Metadata" section in the `Goth` module documentation for more information.)
 
     * `:scope` - Token scope, defaults to `#{inspect(@default_scope)}`.
 

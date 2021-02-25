@@ -60,7 +60,7 @@ To query the metadata server for an access token, you must configure
 the following:
 
   * `url` must be set to the base url for the metadata server.
-  * `credentials` must be set to a tuple `{:instance, String.t()}`
+  * `credentials` must be set to a tuple `{:instance, account}`
     with the name of the service account to use.
 
 ```elixir

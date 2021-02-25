@@ -32,7 +32,8 @@ defmodule Goth do
 
     * `:name` - the name to register the server under.
 
-    * `:credentials` - a map of credentials or a tuple `{:instance, String.t()}`.
+    * `:credentials` - a map of credentials or a tuple `{:instance, account}` (See
+      "Google Compute Metadata" section in the module documentation for more information.)
 
     * `:cooldown` - Time in milliseconds between retrying requests, defaults
       to `#{@cooldown}`.
