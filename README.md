@@ -50,6 +50,33 @@ A simple library to generate and retrieve OAuth2 tokens for use with Google Clou
     }
     ```
 
+## Google Compute Metadata
+
+Every compute instance stores its metadata on a metadata server.
+Goth can query this metadata server to fetch authentication credentials
+for a service account within the instance.
+
+To query the metadata server for an access token, you must configure
+the following:
+
+  * `url` must be set to the base url for the metadata server.
+  * `credentials` must be set to a tuple `{:instance, account}`
+    with the name of the service account to use.
+
+```elixir
+defmodule MyApp.Application do
+  use Application
+
+  def start(_type, _args) do
+    children = [
+      {Goth, name: MyApp.Goth, url: "http://metadata.google.internal", credentials: {:instance, "default"}}
+    ]
+
+    Supervisor.start_link(children, strategy: :one_for_one)
+  end
+end
+```
+
 <!-- MDOC !-->
 
 ## Upgrading from Goth < 1.3
