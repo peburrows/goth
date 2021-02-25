@@ -25,6 +25,11 @@ defmodule Goth.Token do
   @doc false
   def default_scope(), do: @default_scope
 
+  @metadata_url "http://metadata.google.internal/computeMetadata/v1/instance"
+
+  @doc false
+  def metadata_url(), do: @metadata_url
+
   @doc """
   Fetch the token from the Google API using the given `config`.
 
@@ -52,9 +57,10 @@ defmodule Goth.Token do
         {Goth.HTTPClient.Hackney, Goth.HTTPClient.Hackney.init([])}
       end)
 
-    jwt = jwt(config.scope, config.credentials)
+    jwt_or_metadata = jwt(config.scope, config.credentials)
+    token_scope = maybe_override_token_scope(jwt_or_metadata, config.scope)
 
-    case request(config.http_client, config.url, jwt) do
+    case request(config.http_client, config.url, jwt_or_metadata) do
       {:ok, %{status: 200} = response} ->
         with {:ok, map} <- Jason.decode(response.body) do
           %{
@@ -65,7 +71,7 @@ defmodule Goth.Token do
 
           token = %__MODULE__{
             expires: System.system_time(:second) + expires_in,
-            scope: config.scope,
+            scope: token_scope,
             token: token,
             type: type
             # sub: ...,
@@ -90,7 +96,9 @@ defmodule Goth.Token do
   end
 
   # Override for instance metadata
-  defp jwt(_scope, {:instance, _} = instance), do: instance
+  defp jwt(scope, {:instance, account}) do
+    {:metadata, account, if(scope == @default_scope, do: "", else: scope)}
+  end
 
   defp jwt(scope, %{
          "private_key" => private_key,
@@ -112,9 +120,14 @@ defmodule Goth.Token do
     JOSE.JWT.sign(jwk, header, claim_set) |> JOSE.JWS.compact() |> elem(1)
   end
 
-  defp request(http_client, url, {:instance, account}) do
+  defp maybe_override_token_scope({:metadata, _, scope}, _), do: scope
+  defp maybe_override_token_scope(_, scope), do: scope
+
+  defp request(http_client, url, {:metadata, account, scope}) do
     headers = [{"metadata-flavor", "Google"}]
-    url = "#{url}/computeMetadata/v1/instance/#{account}/token"
+    base_url = if(url == @default_url, do: @metadata_url, else: url)
+    qs = if(scope == "", do: scope, else: "?scopes=#{scope}")
+    url = "#{base_url}/service-accounts/#{account}/token#{qs}"
     Goth.HTTPClient.request(http_client, :get, url, headers, "", [])
   end
 

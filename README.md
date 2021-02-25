@@ -56,12 +56,14 @@ Every compute instance stores its metadata on a metadata server.
 Goth can query this metadata server to fetch authentication credentials
 for a service account within the instance.
 
-To query the metadata server for an access token, you must configure
-the following:
+The following services support compute instance metadata:
 
-  * `url` must be set to the base url for the metadata server.
-  * `credentials` must be set to a tuple `{:instance, account}`
-    with the name of the service account to use.
+  * [Google Compute Engine](https://cloud.google.com/compute/docs/metadata/default-metadata-values#vm_instance_metadata) / Google Kubernetes Engine
+  * [App Engine](https://cloud.google.com/appengine/docs/standard/java/accessing-instance-metadata#identifying_which_metadata_endpoint_to_use)
+  * [Cloud Run](https://cloud.google.com/run/docs/securing/service-identity#access_tokens)
+
+To query the metadata server for an access token, use a tuple
+of `{:instance, account}` with the name of the service account:
 
 ```elixir
 defmodule MyApp.Application do
@@ -69,13 +71,35 @@ defmodule MyApp.Application do
 
   def start(_type, _args) do
     children = [
-      {Goth, name: MyApp.Goth, url: "http://metadata.google.internal", credentials: {:instance, "default"}}
+      {Goth, name: MyApp.Goth, credentials: {:instance, "default"}}
     ]
 
     Supervisor.start_link(children, strategy: :one_for_one)
   end
 end
 ```
+
+**A note about instance metadata and scope:**
+
+Most of the time instance credentials do not require a scope
+to request an access token. In fact, scope is only available
+to be set for [service identity access tokens](https://cloud.google.com/run/docs/securing/service-identity#access_tokens)
+on App Engine and Cloud Run.
+
+Therefore when using instance credentials, `scope` must be
+passed explicitly:
+
+```elixir
+Goth.Token.fetch(%{
+  credentials: {:instance, "12345-user@iam.example.com"},
+  scope: "https://www.googleapis.com/auth/pubsub"
+})
+```
+
+Consult the full list of [Google OAuth scopes](https://developers.google.com/identity/protocols/googlescopes)
+to find which scopes you need.
+
+
 
 <!-- MDOC !-->
 
