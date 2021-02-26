@@ -16,8 +16,6 @@ defmodule Goth do
   @doc since: "1.3.0"
   defdelegate fetch(server), to: Goth.Server
 
-  @url Goth.Token.default_url()
-  @scope Goth.Token.default_scope()
   @retry_after 1000
   @refresh_before_minutes 5
 
@@ -32,26 +30,44 @@ defmodule Goth do
 
     * `:name` - the name to register the server under.
 
-    * `:credentials` - a map of credentials or a tuple `{:instance, account}` (See
-      "Google Compute Metadata" section in the module documentation for more information.)
+    * `:source` - the source to retrieve the token from.
+
+      See documentation for the `:source` option in `Goth.Token.fetch/1` for
+      more information.
 
     * `:retry_after` - Time in milliseconds between retrying requests, defaults
       to `#{@retry_after}`.
-
-    * `:scope` - Token scope, defaults to `#{inspect(@scope)}`.
-
-       See https://developers.google.com/identity/protocols/oauth2/scopes for
-       available scopes.
 
     * `:refresh_before` - Time in seconds before the token is about to expire
       that it is tried to be automatically refreshed. Defaults to
       `#{@refresh_before_minutes * 60}` (#{@refresh_before_minutes} minutes).
 
-    * `:url` - URL to fetch the token from, defaults to `#{inspect(@url)}`.
-
     * `:http_client` - a `{module, opts}` tuple, where `module` implements the
       `Goth.HTTPClient` behaviour and `opts` is a keywords list to initialize the client with.
       Defaults to `{Goth.HTTPClient.Hackney, []}`.
+
+  ## Examples
+
+  Generate a token using a service account credentials file:
+
+      iex> credentials = "credentials.json" |> File.read!() |> Jason.decode!()
+      iex> Goth.start_link(name: MyApp.Goth, source: {:service_account, credentials, []})
+      iex> Goth.fetch(MyApp.Goth)
+      {:ok, %Goth.Token{...}}
+
+  Retrieve the token using a refresh token:
+
+      iex> credentials = "credentials.json" |> File.read!() |> Jason.decode!()
+      iex> Goth.start_link(name: MyApp.Goth, source: {:refresh_token, credentials, []})
+      iex> Goth.fetch(MyApp.Goth)
+      {:ok, %Goth.Token{...}}
+
+  Retrieve the token using the Google metadata server:
+
+      iex> Goth.start_link(name: MyApp.Goth, source: {:metadata, []})
+      iex> Goth.fetch(MyApp.Goth)
+      {:ok, %Goth.Token{...}}
+
   """
   @doc since: "1.3.0"
   def start_link(opts) do
@@ -70,8 +86,6 @@ defmodule Goth do
 
   defp with_default_opts(opts) do
     opts
-    |> Keyword.put_new(:scope, @scope)
-    |> Keyword.put_new(:url, @url)
     |> Keyword.put_new(:retry_after, @retry_after)
     |> Keyword.put_new(:refresh_before, @refresh_before_minutes * 60)
     |> Keyword.put_new(:http_client, {Goth.HTTPClient.Hackney, []})

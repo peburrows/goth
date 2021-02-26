@@ -13,12 +13,10 @@ defmodule Goth.Server do
 
   defstruct [
     :name,
-    :credentials,
-    :url,
-    :scope,
+    :source,
+    :http_client,
     :retry_after,
     :refresh_before,
-    :http_client,
     retries: @max_retries
   ]
 
@@ -88,7 +86,7 @@ defmodule Goth.Server do
   end
 
   defp put(state, token) do
-    config = Map.take(state, [:http_client, :credentials, :scope, :url])
+    config = Map.take(state, [:source, :http_client])
     :persistent_term.put({__MODULE__, state.name}, {config, token})
   end
 end

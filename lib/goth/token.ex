@@ -16,58 +16,111 @@ defmodule Goth.Token do
   defstruct [:token, :type, :scope, :sub, :expires, :account]
 
   @default_url "https://www.googleapis.com/oauth2/v4/token"
-
-  @doc false
-  def default_url(), do: @default_url
-
   @default_scope "https://www.googleapis.com/auth/cloud-platform"
-
-  @doc false
-  def default_scope(), do: @default_scope
 
   @doc """
   Fetch the token from the Google API using the given `config`.
 
   Config may contain the following keys:
 
-    * `:credentials` - a map of credentials or a tuple `{:instance, account}` (See
-      "Google Compute Metadata" section in the `Goth` module documentation for more information.)
+    * `:source` - One of:
 
-    * `:scope` - Token scope, defaults to `#{inspect(@default_scope)}`.
+      * `{:service_account, credentials, options}` - use a service account.
 
-    * `:url` - URL to fetch the token from, defaults to `#{inspect(@default_url)}`.
+        `credentials` is a map and can contain the following keys:
+
+          * `"private_key"`
+
+          * `"client_email"`
+
+          * `"token_uri"`
+
+        `options` is a keywords list and can contain the following keys:
+
+          * `:url` - the URL of the authentication service, defaults to:
+            `"https://www.googleapis.com/oauth2/v4/token"`
+
+          * `:scope` - the token scope, defaults to `#{inspect(@default_scope)}`
+
+      * `{:refresh_token, credentials, options}` - use a refresh token.
+
+        `credentials` is a map and can contain the following keys:
+
+          * `"refresh_token"`
+
+          * `"client_id"`
+
+          * `"client_secret"`
+
+        `options` is a keywords list and can contain the following keys:
+
+          * `:url` - the URL of the authentication service, defaults to:
+            `"https://www.googleapis.com/oauth2/v4/token"`
+
+      * `{:metadata, options}` - use the Google metadata server.
+
+        `options` is a keywords list and can contain the following keys:
+
+          * `:account` - the name of the account to generate the token for, defaults to `"default"`
+
+          * `:url` - the URL of the metadata server, defaults to `"http://metadata.google.internal"`
 
     * `:http_client` - HTTP client configuration, defaults to using `Goth.HTTPClient.Hackney`.
       See `Goth.HTTPClient` for more information.
 
+  ## Examples
+
+  ### Generate a token using a service account credentials file:
+
+      iex> credentials = "credentials.json" |> File.read!() |> Jason.decode!()
+      iex> Goth.Token.fetch(%{source: {:service_account, credentials, []}})
+      {:ok, %Goth.Token{...}}
+
+  You can generate a credentials file containing service account using `gcloud` utility like this:
+
+      gcloud iam service-accounts keys create --key-file-type=json --iam-account=... credentials.json
+
+  ## Retrieve the token using a refresh token:
+
+      iex> credentials = "credentials.json" |> File.read!() |> Jason.decode!()
+      iex> Goth.Token.fetch(%{source: {:refresh_token, credentials, []}})
+      {:ok, %Goth.Token{...}}
+
+  You can generate a credentials file containing refresh token using `gcloud` utility like this:
+
+      gcloud auth application-default login
+
+  ## Retrieve the token using the Google metadata server:
+
+      iex> Goth.Token.fetch(%{source: {:metadata, []}})
+      {:ok, %Goth.Token{...}}
+
+  See [Storing and retrieving instance metadata](https://cloud.google.com/compute/docs/storing-retrieving-metadata)
+  for more information on metadata server.
   """
   @doc since: "1.3.0"
   @spec fetch(map()) :: {:ok, t()} | {:error, term()}
   def fetch(config) when is_map(config) do
     config =
-      config
-      |> Map.put_new(:url, @default_url)
-      |> Map.put_new(:scope, @default_scope)
-      |> Map.put_new_lazy(:http_client, fn ->
+      Map.put_new_lazy(config, :http_client, fn ->
         {Goth.HTTPClient.Hackney, Goth.HTTPClient.Hackney.init([])}
       end)
 
-    jwt = jwt(config.scope, config.credentials)
-
-    case request(config.http_client, config.url, jwt) do
+    case request(config) do
       {:ok, %{status: 200} = response} ->
         with {:ok, map} <- Jason.decode(response.body) do
           %{
-            "access_token" => token,
+            "access_token" => access_token,
             "expires_in" => expires_in,
-            "token_type" => type
+            "token_type" => token_type
           } = map
 
           token = %__MODULE__{
             expires: System.system_time(:second) + expires_in,
-            scope: config.scope,
-            token: token,
-            type: type
+            # TODO:
+            scope: map["scope"],
+            token: access_token,
+            type: token_type
             # sub: ...,
             # account: ...
           }
@@ -89,8 +142,43 @@ defmodule Goth.Token do
     end
   end
 
-  # Override for instance metadata
-  defp jwt(_scope, {:instance, _} = instance), do: instance
+  defp request(%{source: {:service_account, credentials, options}} = config)
+       when is_map(credentials) and is_list(options) do
+    url = Keyword.get(options, :url, @default_url)
+    scope = Keyword.get(options, :scope, @default_scope)
+    jwt = jwt(scope, credentials)
+    headers = [{"content-type", "application/x-www-form-urlencoded"}]
+    grant_type = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+    body = "grant_type=#{grant_type}&assertion=#{jwt}"
+    Goth.HTTPClient.request(config.http_client, :post, url, headers, body, [])
+  end
+
+  defp request(%{source: {:refresh_token, credentials, options}} = config)
+       when is_map(credentials) and is_list(options) do
+    url = Keyword.get(options, :url, @default_url)
+    headers = [{"Content-Type", "application/x-www-form-urlencoded"}]
+    refresh_token = Map.fetch!(credentials, "refresh_token")
+    client_id = Map.fetch!(credentials, "client_id")
+    client_secret = Map.fetch!(credentials, "client_secret")
+
+    body =
+      URI.encode_query(
+        grant_type: "refresh_token",
+        refresh_token: refresh_token,
+        client_id: client_id,
+        client_secret: client_secret
+      )
+
+    Goth.HTTPClient.request(config.http_client, :post, url, headers, body, [])
+  end
+
+  defp request(%{source: {:metadata, options}} = config) when is_list(options) do
+    account = Keyword.get(options, :account, "default")
+    url = Keyword.get(options, :url, "http://metadata.google.internal")
+    url = "#{url}/computeMetadata/v1/instance/service-accounts/#{account}/token"
+    headers = [{"metadata-flavor", "Google"}]
+    Goth.HTTPClient.request(config.http_client, :get, url, headers, "", [])
+  end
 
   defp jwt(scope, %{
          "private_key" => private_key,
@@ -110,19 +198,6 @@ defmodule Goth.Token do
     }
 
     JOSE.JWT.sign(jwk, header, claim_set) |> JOSE.JWS.compact() |> elem(1)
-  end
-
-  defp request(http_client, url, {:instance, account}) do
-    headers = [{"metadata-flavor", "Google"}]
-    url = "#{url}/computeMetadata/v1/instance/#{account}/token"
-    Goth.HTTPClient.request(http_client, :get, url, headers, "", [])
-  end
-
-  defp request(http_client, url, jwt) do
-    headers = [{"content-type", "application/x-www-form-urlencoded"}]
-    grant_type = "urn:ietf:params:oauth:grant-type:jwt-bearer"
-    body = "grant_type=#{grant_type}&assertion=#{jwt}"
-    Goth.HTTPClient.request(http_client, :post, url, headers, body, [])
   end
 
   # Everything below is deprecated.

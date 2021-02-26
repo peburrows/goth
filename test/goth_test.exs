@@ -10,32 +10,14 @@ defmodule GothTest do
       Plug.Conn.resp(conn, 200, body)
     end)
 
-    start_supervised!(
-      {Goth,
-       name: test, credentials: random_credentials(), url: "http://localhost:#{bypass.port}"}
-    )
+    config = [
+      name: test,
+      source:
+        {:service_account, random_service_account_credentials(),
+         url: "http://localhost:#{bypass.port}"}
+    ]
 
-    {:ok, token} = Goth.fetch(test)
-    assert token.token == "dummy"
-    assert token.type == "Bearer"
-    assert_in_delta token.expires, now + 3599, 1
-
-    Bypass.down(bypass)
-    {:ok, ^token} = Goth.fetch(test)
-  end
-
-  test "fetch/1 using metadata credentials", %{test: test} do
-    now = System.system_time(:second)
-    bypass = Bypass.open()
-
-    Bypass.expect(bypass, fn conn ->
-      body = ~s|{"access_token":"dummy","expires_in":3599,"token_type":"Bearer"}|
-      Plug.Conn.resp(conn, 200, body)
-    end)
-
-    start_supervised!(
-      {Goth, name: test, credentials: {:instance, "default"}, url: "http://localhost:#{bypass.port}"}
-    )
+    start_supervised!({Goth, config})
 
     {:ok, token} = Goth.fetch(test)
     assert token.token == "dummy"
@@ -59,8 +41,9 @@ defmodule GothTest do
 
     Goth.Server.start_link(
       name: test,
-      credentials: random_credentials(),
-      url: "http://localhost:#{bypass.port}",
+      source:
+        {:service_account, random_service_account_credentials(),
+         url: "http://localhost:#{bypass.port}"},
       http_client: {Goth.HTTPClient.Hackney, []},
       retry_after: 10
     )
@@ -85,13 +68,15 @@ defmodule GothTest do
       Plug.Conn.resp(conn, 200, body)
     end)
 
-    start_supervised!(
-      {Goth,
-       name: test,
-       credentials: random_credentials(),
-       url: "http://localhost:#{bypass.port}",
-       retries: 0}
-    )
+    config = [
+      name: test,
+      source:
+        {:service_account, random_service_account_credentials(),
+         url: "http://localhost:#{bypass.port}"},
+      retries: 0
+    ]
+
+    start_supervised!({Goth, config})
 
     # higher timeouts since calculating JWT is expensive
     assert_receive :pong, 1000
@@ -99,7 +84,7 @@ defmodule GothTest do
     assert_receive :pong, 1000
   end
 
-  defp random_credentials() do
+  defp random_service_account_credentials() do
     %{
       "private_key" => random_private_key(),
       "client_email" => "alice@example.com",
