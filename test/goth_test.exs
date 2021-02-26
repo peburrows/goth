@@ -62,7 +62,7 @@ defmodule GothTest do
       credentials: random_credentials(),
       url: "http://localhost:#{bypass.port}",
       http_client: {Goth.HTTPClient.Hackney, []},
-      cooldown: 10
+      retry_after: 10
     )
 
     # higher timeouts since calculating JWT is expensive

@@ -18,14 +18,14 @@ defmodule Goth do
 
   @url Goth.Token.default_url()
   @scope Goth.Token.default_scope()
-  @cooldown 1000
+  @retry_after 1000
   @refresh_before_minutes 5
 
   @doc """
   Starts the server.
 
   When the server is started, we attempt to fetch the token and store it in
-  internal cache. If we fail, we'll try up to 3 times with #{@cooldown}ms
+  internal cache. If we fail, we'll try up to 3 times with #{@retry_after}ms
   cooldown between requests and if we couldn't retrieve it, we crash.
 
   ## Options
@@ -35,8 +35,8 @@ defmodule Goth do
     * `:credentials` - a map of credentials or a tuple `{:instance, account}` (See
       "Google Compute Metadata" section in the module documentation for more information.)
 
-    * `:cooldown` - Time in milliseconds between retrying requests, defaults
-      to `#{@cooldown}`.
+    * `:retry_after` - Time in milliseconds between retrying requests, defaults
+      to `#{@retry_after}`.
 
     * `:scope` - Token scope, defaults to `#{inspect(@scope)}`.
 
@@ -72,7 +72,7 @@ defmodule Goth do
     opts
     |> Keyword.put_new(:scope, @scope)
     |> Keyword.put_new(:url, @url)
-    |> Keyword.put_new(:cooldown, @cooldown)
+    |> Keyword.put_new(:retry_after, @retry_after)
     |> Keyword.put_new(:refresh_before, @refresh_before_minutes * 60)
     |> Keyword.put_new(:http_client, {Goth.HTTPClient.Hackney, []})
   end

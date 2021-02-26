@@ -16,7 +16,7 @@ defmodule Goth.Server do
     :credentials,
     :url,
     :scope,
-    :cooldown,
+    :retry_after,
     :refresh_before,
     :http_client,
     retries: @max_retries
@@ -69,7 +69,7 @@ defmodule Goth.Server do
 
       {:error, exception} ->
         if state.retries > 1 do
-          Process.send_after(self(), :refresh, state.cooldown)
+          Process.send_after(self(), :refresh, state.retry_after)
           {:noreply, %{state | retries: state.retries - 1}}
         else
           raise "too many failed attempts to refresh, last error: #{inspect(exception)}"
