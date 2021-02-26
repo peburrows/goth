@@ -5,14 +5,16 @@ defmodule Goth.TokenTest do
     bypass = Bypass.open()
 
     Bypass.expect(bypass, fn conn ->
-      body = ~s|{"access_token":"dummy","expires_in":3599,"token_type":"Bearer"}|
+      body =
+        ~s|{"access_token":"dummy","scope":"dummy_scope","expires_in":3599,"token_type":"Bearer"}|
+
       Plug.Conn.resp(conn, 200, body)
     end)
 
     config = %{
-      credentials: random_credentials(),
-      url: "http://localhost:#{bypass.port}",
-      scope: "https://www.googleapis.com/auth/cloud-platform"
+      source:
+        {:service_account, random_service_account_credentials(),
+         url: "http://localhost:#{bypass.port}"}
     }
 
     {:ok, token} = Goth.Token.fetch(config)
@@ -28,9 +30,9 @@ defmodule Goth.TokenTest do
     end)
 
     config = %{
-      credentials: random_credentials(),
-      url: "http://localhost:#{bypass.port}",
-      scope: "https://www.googleapis.com/auth/cloud-platform"
+      source:
+        {:service_account, random_service_account_credentials(),
+         url: "http://localhost:#{bypass.port}"}
     }
 
     {:error, %Jason.DecodeError{}} = Goth.Token.fetch(config)
@@ -39,26 +41,48 @@ defmodule Goth.TokenTest do
     {:error, :econnrefused} = Goth.Token.fetch(config)
   end
 
+  test "fetch/1 with refresh token" do
+    bypass = Bypass.open()
+
+    Bypass.expect(bypass, fn conn ->
+      body =
+        ~s|{"access_token":"dummy","scope":"dummy_scope","expires_in":3599,"token_type":"Bearer"}|
+
+      Plug.Conn.resp(conn, 200, body)
+    end)
+
+    config = %{
+      source:
+        {:refresh_token,
+         %{"client_id" => "aaa", "client_secret" => "bbb", "refresh_token" => "ccc"},
+         url: "http://localhost:#{bypass.port}"}
+    }
+
+    {:ok, token} = Goth.Token.fetch(config)
+    assert token.token == "dummy"
+    assert token.scope == "dummy_scope"
+  end
+
   test "fetch/1 from instance metadata" do
     bypass = Bypass.open()
 
     Bypass.expect(bypass, fn conn ->
-      assert conn.request_path =~ ~r[/computeMetadata/v1/instance/default/token]
+      assert conn.request_path == "/computeMetadata/v1/instance/service-accounts/alice/token"
+
       body = ~s|{"access_token":"dummy","expires_in":3599,"token_type":"Bearer"}|
       Plug.Conn.resp(conn, 200, body)
     end)
 
     config = %{
-      credentials: {:instance, "default"},
-      url: "http://localhost:#{bypass.port}",
-      scope: nil
+      source: {:metadata, account: "alice", url: "http://localhost:#{bypass.port}"}
     }
 
     {:ok, token} = Goth.Token.fetch(config)
     assert token.token == "dummy"
+    assert token.scope == nil
   end
 
-  defp random_credentials() do
+  defp random_service_account_credentials() do
     %{
       "private_key" => random_private_key(),
       "client_email" => "alice@example.com",
