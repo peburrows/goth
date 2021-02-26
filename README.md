@@ -88,9 +88,10 @@ defmodule MyApp.Application do
 
   def start(_type, _args) do
     credentials = "GCP_CREDENTIALS" |> System.fetch_env!() |> Jason.decode!()
+     source = {:service_account, credentials, []}
 
     children = [
-      {Goth, name: MyApp.Goth, credentials: credentials}
+      {Goth, name: MyApp.Goth, source: source}
     ]
 
     Supervisor.start_link(children, strategy: :one_for_one)
