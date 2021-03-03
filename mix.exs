@@ -24,7 +24,7 @@ defmodule Goth.Mixfile do
 
   defp deps do
     [
-      {:joken, "~> 2.0"},
+      {:jose, "~> 1.10"},
       {:jason, "~> 1.1"},
       {:httpoison, "~> 0.11 or ~> 1.0"},
       {:bypass, "~> 2.1", only: :test},
