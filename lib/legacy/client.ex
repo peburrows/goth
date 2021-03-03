@@ -57,8 +57,8 @@ defmodule Goth.Client do
     url_base = "#{metadata}/#{endpoint}/#{account}"
 
     url = "#{url_base}/token"
-    {:ok, token} = HTTPoison.get(url, headers)
-    {:ok, Token.from_response_json({service_account, scope}, token.body)}
+    response = request!(:get, url, headers, "")
+    {:ok, Token.from_response_json({service_account, scope}, response.body)}
   end
 
   # Fetch an access token from Google's OAuth service using a JWT
@@ -76,7 +76,7 @@ defmodule Goth.Client do
 
     headers = [{"Content-Type", "application/x-www-form-urlencoded"}]
 
-    HTTPoison.post(url, body, headers)
+    request(:post, url, headers, body)
     |> handle_response({account, scope}, sub)
   end
 
@@ -99,7 +99,7 @@ defmodule Goth.Client do
 
     headers = [{"Content-Type", "application/x-www-form-urlencoded"}]
 
-    HTTPoison.post(url, body, headers)
+    request(:post, url, headers, body)
     |> handle_response({account, scope})
   end
 
@@ -157,7 +157,7 @@ defmodule Goth.Client do
     endpoint = "computeMetadata/v1/project/project-id"
     metadata = Application.get_env(:goth, :metadata_url, "http://metadata.google.internal")
     url = "#{metadata}/#{endpoint}"
-    HTTPoison.get!(url, headers).body
+    request!(:get, url, headers, "").body
   end
 
   defp destruct_opts(opts) do
@@ -175,9 +175,21 @@ defmodule Goth.Client do
     |> Enum.into(%{})
   end
 
+  defp request(method, url, headers, body) do
+    client = {Goth.HTTPClient.Hackney, Goth.HTTPClient.Hackney.init([])}
+    Goth.HTTPClient.request(client, method, url, headers, body, [])
+  end
+
+  defp request!(method, url, headers, body) do
+    case request(method, url, headers, body) do
+      {:ok, response} -> response
+      {:error, reason} -> raise RuntimeError.exception(inspect(reason))
+    end
+  end
+
   defp handle_response(resp, opts, sub \\ nil)
 
-  defp handle_response({:ok, %{body: body, status_code: code}}, {account, scope}, sub)
+  defp handle_response({:ok, %{body: body, status: code}}, {account, scope}, sub)
        when code in 200..299,
        do: {:ok, Token.from_response_json({account, scope}, sub, body)}
 
