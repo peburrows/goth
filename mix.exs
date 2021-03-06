@@ -15,7 +15,8 @@ defmodule Goth.Mixfile do
 
   def application do
     [
-      mod: {Goth.Application, []}
+      mod: {Goth.Application, []},
+      extra_applications: [:logger]
     ]
   end
 
