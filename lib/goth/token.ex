@@ -214,7 +214,7 @@ defmodule Goth.Token do
   # ## Example
   #     iex> Token.for_scope("https://www.googleapis.com/auth/pubsub")
   #     {:ok, %Goth.Token{expires: ..., token: "...", type: "..."} }
-  @doc false
+  @deprecated "Use Goth.fetch/1 instead"
   def for_scope(info, sub \\ nil)
 
   @spec for_scope(scope :: String.t(), sub :: String.t() | nil) :: {:ok, t} | {:error, any()}
