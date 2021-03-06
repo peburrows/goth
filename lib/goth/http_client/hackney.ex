@@ -13,8 +13,25 @@ defmodule Goth.HTTPClient.Hackney do
 
   defstruct default_opts: []
 
+  require Logger
+
   @impl true
   def init(opts) do
+    unless Code.ensure_loaded?(:hackney) do
+      Logger.error """
+      Could not find hackney dependency.
+
+      Please add :hackney to your dependencies:
+
+          {:hackney, "~> 1.17"}
+
+      Or use a different HTTP client. See Goth.HTTPClient for more information.
+      """
+
+      raise "missing hackney dependency"
+    end
+
+    {:ok, _} = Application.ensure_all_started(:hackney)
     struct!(__MODULE__, opts)
   end
 

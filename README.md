@@ -10,13 +10,17 @@ A simple library to generate and retrieve OAuth2 tokens for use with Google Clou
 
 ## Installation
 
-**Note:** below are instructions for using the upcoming v1.3.0 version. For more information on earlier versions of Goth, [see v1.2.0 documentation on hexdocs.pm](https://hexdocs.pm/goth/1.2.0).
+**Note:** below are instructions for using Goth v1.3+. For more information on earlier versions of Goth, [see v1.2.0 documentation on hexdocs.pm](https://hexdocs.pm/goth/1.2.0).
 
-1. Add Goth to your list of dependencies in `mix.exs`:
+1. Add `:goth` to your list of dependencies in `mix.exs`. To use the built-in, Hackney-based HTTP
+   client adapter, add `:hackney` too:
 
    ```elixir
    def deps do
-     [{:goth, github: "peburrows/goth"}]
+     [
+       {:goth, github: "peburrows/goth"},
+       {:hackney, "~> 1.17"}
+     ]
    end
    ```
 
@@ -59,7 +63,20 @@ See `Goth.start_link/1` for more information about possible configuration option
 ## Upgrading from Goth < 1.3
 
 Earlier versions of Goth relied on global application environment configuration which is deprecated
-in favour of a more direct and explicit approach in Goth v1.3+.
+in favour of a more direct and explicit approach in Goth v1.3+. Previously, we were depending
+on the HTTPoison HTTP client, now we have an _optional_ dependency on Hackney, so in order
+to use it, you need to explicitly include it in your dependencies too:
+
+Change your `mix.exs`:
+
+```elixir
+def deps do
+ [
+   {:goth, github: "peburrows/goth"},
+   {:hackney, "~> 1.17"}
+ ]
+end
+```
 
 You might have code similar to this:
 

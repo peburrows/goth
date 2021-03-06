@@ -177,15 +177,14 @@ defmodule Goth.Config do
         try do
           Client.retrieve_metadata_project()
         rescue
-          e in HTTPoison.Error ->
-            case e do
-              %HTTPoison.Error{reason: :nxdomain} ->
+          e ->
+            if e.message =~ ":nxdomain" do
                 raise " Failed to retrieve project data from GCE internal metadata service.
                    Either you haven't configured your GCP credentials, you aren't running on GCE, or both.
                    Please see README.md for instructions on configuring your credentials."
 
-              _ ->
-                e
+            else
+              reraise e, __STACKTRACE__
             end
         end
 
