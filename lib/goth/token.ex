@@ -99,7 +99,7 @@ defmodule Goth.Token do
   for more information on metadata server.
   """
   @doc since: "1.3.0"
-  @spec fetch(map()) :: {:ok, t()} | {:error, term()}
+  @spec fetch(map()) :: {:ok, t()} | {:error, Exception.t}
   def fetch(config) when is_map(config) do
     config =
       Map.put_new_lazy(config, :http_client, fn ->
