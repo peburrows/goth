@@ -38,7 +38,8 @@ defmodule Goth.TokenTest do
     {:error, %Jason.DecodeError{}} = Goth.Token.fetch(config)
 
     Bypass.down(bypass)
-    {:error, :econnrefused} = Goth.Token.fetch(config)
+    {:error, error} = Goth.Token.fetch(config)
+    assert error.message == ":econnrefused"
   end
 
   test "fetch/1 with refresh token" do
