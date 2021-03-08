@@ -19,12 +19,12 @@ defmodule Goth.HTTPClient do
 
   @type body() :: binary()
 
-  @type initial_state() :: term()
+  @type initial_state() :: map()
 
   @doc """
   Callback to initialize the given HTTP client.
 
-  The returned `initial_state` will be given to `c:request/6`.
+  The returned `initial_state` needs to be a map and  will be given to `c:request/6`.
   """
   @callback init(opts :: keyword()) :: initial_state()
 
@@ -34,6 +34,17 @@ defmodule Goth.HTTPClient do
   @callback request(method(), url(), [header()], body(), opts :: keyword(), initial_state()) ::
               {:ok, %{status: status, headers: [header()], body: body()}}
               | {:error, Exception.t()}
+
+  @doc false
+  def init({module, opts}) when is_atom(module) and is_list(opts) do
+    initial_state = module.init(opts)
+
+    unless is_map(initial_state) do
+      raise "#{inspect(module)}.init/1 must return a map, got: #{inspect(initial_state)}"
+    end
+
+    {module, initial_state}
+  end
 
   @doc false
   def request({module, initial_state}, method, url, headers, body, opts) do

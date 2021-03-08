@@ -18,7 +18,7 @@ defmodule Goth.HTTPClient.Hackney do
   @impl true
   def init(opts) do
     unless Code.ensure_loaded?(:hackney) do
-      Logger.error """
+      Logger.error("""
       Could not find hackney dependency.
 
       Please add :hackney to your dependencies:
@@ -26,7 +26,7 @@ defmodule Goth.HTTPClient.Hackney do
           {:hackney, "~> 1.17"}
 
       Or use a different HTTP client. See Goth.HTTPClient for more information.
-      """
+      """)
 
       raise "missing hackney dependency"
     end

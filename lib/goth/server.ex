@@ -39,7 +39,7 @@ defmodule Goth.Server do
   def init(opts) when is_list(opts) do
     opts =
       Keyword.update!(opts, :http_client, fn {module, opts} ->
-        {module, module.init(opts)}
+        Goth.HTTPClient.init({module, opts})
       end)
 
     state = struct!(__MODULE__, opts)

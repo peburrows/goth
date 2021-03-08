@@ -103,7 +103,7 @@ defmodule Goth.Token do
   def fetch(config) when is_map(config) do
     config =
       Map.put_new_lazy(config, :http_client, fn ->
-        {Goth.HTTPClient.Hackney, Goth.HTTPClient.Hackney.init([])}
+        Goth.HTTPClient.init({Goth.HTTPClient.Hackney, []})
       end)
 
     case request(config) do
