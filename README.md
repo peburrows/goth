@@ -18,7 +18,7 @@ A simple library to generate and retrieve OAuth2 tokens for use with Google Clou
    ```elixir
    def deps do
      [
-       {:goth, github: "peburrows/goth"},
+       {:goth, "~> 1.3-rc"},
        {:hackney, "~> 1.17"}
      ]
    end
@@ -72,7 +72,7 @@ Change your `mix.exs`:
 ```elixir
 def deps do
  [
-   {:goth, github: "peburrows/goth"},
+   {:goth, "~> 1.3-rc"},
    {:hackney, "~> 1.17"}
  ]
 end

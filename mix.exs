@@ -1,14 +1,20 @@
 defmodule Goth.Mixfile do
   use Mix.Project
 
+  @version "1.3.0-rc.0"
+  @source_url "https://github.com/peburrows/goth"
+
   def project do
     [
       app: :goth,
-      version: "1.3.0-dev",
-      description: description(),
+      version: @version,
       package: package(),
       elixirc_paths: elixirc_paths(Mix.env()),
       elixir: "~> 1.10",
+      source_url: @source_url,
+      name: "Goth",
+      description: description(),
+      docs: [source_ref: "v#{@version}", main: "readme", extras: ["README.md"]],
       deps: deps()
     ]
   end
@@ -46,7 +52,7 @@ defmodule Goth.Mixfile do
     [
       maintainers: ["Phil Burrows"],
       licenses: ["MIT"],
-      links: %{"GitHub" => "https://github.com/peburrows/goth"}
+      links: %{"GitHub" => @source_url}
     ]
   end
 end
