@@ -23,7 +23,7 @@ defmodule Goth.Token do
   ]
 
   @default_url "https://www.googleapis.com/oauth2/v4/token"
-  @default_scope "https://www.googleapis.com/auth/cloud-platform"
+  @default_scopes ["https://www.googleapis.com/auth/cloud-platform"]
 
   @doc """
   Fetch the token from the Google API using the given `config`.
@@ -45,7 +45,7 @@ defmodule Goth.Token do
           * `:url` - the URL of the authentication service, defaults to:
             `"https://www.googleapis.com/oauth2/v4/token"`
 
-          * `:scope` - the token scope, defaults to `#{inspect(@default_scope)}`
+          * `:scopes` - the list of token scopes, defaults to `#{inspect(@default_scopes)}`
 
           * `:sub` - an email of user being impersonated, defaults to `nil`
 
@@ -135,10 +135,12 @@ defmodule Goth.Token do
   defp request(%{source: {:service_account, credentials, options}} = config)
        when is_map(credentials) and is_list(options) do
     url = Keyword.get(options, :url, @default_url)
-    scope = Keyword.get(options, :scope, @default_scope)
+    jwt_scope =
+      Keyword.get(options, :scopes, @default_scopes)
+      |> Enum.join(" ")
     sub = Keyword.get(options, :sub)
 
-    jwt = jwt(scope, credentials, sub)
+    jwt = jwt(jwt_scope, credentials, sub)
 
     headers = [{"content-type", "application/x-www-form-urlencoded"}]
     grant_type = "urn:ietf:params:oauth:grant-type:jwt-bearer"
@@ -149,7 +151,7 @@ defmodule Goth.Token do
       |> handle_response()
 
     with {:ok, map} <- result do
-      {:ok, Map.merge(map, %{"scope" => scope, "sub" => sub})}
+      {:ok, Map.merge(map, %{"scope" => jwt_scope, "sub" => sub})}
     end
   end
 
