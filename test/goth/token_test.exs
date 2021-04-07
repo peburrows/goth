@@ -1,7 +1,7 @@
 defmodule Goth.TokenTest do
   use ExUnit.Case, async: true
 
-  test "fetch/1" do
+  test "fetch/1 with service account" do
     bypass = Bypass.open()
 
     Bypass.expect(bypass, fn conn ->
@@ -19,6 +19,30 @@ defmodule Goth.TokenTest do
 
     {:ok, token} = Goth.Token.fetch(config)
     assert token.token == "dummy"
+    assert token.scope == "https://www.googleapis.com/auth/cloud-platform"
+  end
+
+  test "fetch/1 with service account and impersonating user" do
+    bypass = Bypass.open()
+
+    Bypass.expect(bypass, fn conn ->
+      body =
+        ~s|{"access_token":"dummy","scope":"dummy_scope","expires_in":3599,"token_type":"Bearer"}|
+
+      Plug.Conn.resp(conn, 200, body)
+    end)
+
+    config = %{
+      source:
+        {:service_account, random_service_account_credentials(),
+          url: "http://localhost:#{bypass.port}",
+          sub: "bob@example.com"}
+    }
+
+    {:ok, token} = Goth.Token.fetch(config)
+    assert token.token == "dummy"
+    assert token.scope == "https://www.googleapis.com/auth/cloud-platform"
+    assert token.sub == "bob@example.com"
   end
 
   test "fetch/1 with invalid response" do

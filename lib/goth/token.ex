@@ -7,13 +7,20 @@ defmodule Goth.Token do
           token: String.t(),
           type: String.t(),
           scope: String.t(),
-          expires: non_neg_integer
-          # TODO: do we still need these?
-          # account: String.t()
-          # sub: String.t() | nil
+          expires: non_neg_integer,
+          sub: String.t() | nil
         }
 
-  defstruct [:token, :type, :scope, :sub, :expires, :account]
+  defstruct [
+    :token,
+    :type,
+    :scope,
+    :sub,
+    :expires,
+
+    # Deprecated fields:
+    :account
+  ]
 
   @default_url "https://www.googleapis.com/oauth2/v4/token"
   @default_scope "https://www.googleapis.com/auth/cloud-platform"
@@ -33,14 +40,14 @@ defmodule Goth.Token do
 
           * `"client_email"`
 
-          * `"token_uri"`
-
         `options` is a keywords list and can contain the following keys:
 
           * `:url` - the URL of the authentication service, defaults to:
             `"https://www.googleapis.com/oauth2/v4/token"`
 
           * `:scope` - the token scope, defaults to `#{inspect(@default_scope)}`
+
+          * `:sub` - an email of user being impersonated, defaults to `nil`
 
       * `{:refresh_token, credentials, options}` - use a refresh token.
 
@@ -106,39 +113,22 @@ defmodule Goth.Token do
         Goth.HTTPClient.init({Goth.HTTPClient.Hackney, []})
       end)
 
-    case request(config) do
-      {:ok, %{status: 200} = response} ->
-        with {:ok, map} <- Jason.decode(response.body) do
-          %{
-            "access_token" => access_token,
-            "expires_in" => expires_in,
-            "token_type" => token_type
-          } = map
+    with {:ok, map} <- request(config) do
+      %{
+        "access_token" => access_token,
+        "expires_in" => expires_in,
+        "token_type" => token_type
+      } = map
 
-          token = %__MODULE__{
-            expires: System.system_time(:second) + expires_in,
-            # TODO:
-            scope: map["scope"],
-            token: access_token,
-            type: token_type
-            # sub: ...,
-            # account: ...
-          }
+      token = %__MODULE__{
+        expires: System.system_time(:second) + expires_in,
+        scope: map["scope"],
+        token: access_token,
+        type: token_type,
+        sub: map["sub"]
+      }
 
-          {:ok, token}
-        end
-
-      {:ok, response} ->
-        message = """
-        unexpected status #{response.status} from Google
-
-        #{response.body}
-        """
-
-        {:error, RuntimeError.exception(message)}
-
-      {:error, exception} ->
-        {:error, exception}
+      {:ok, token}
     end
   end
 
@@ -146,11 +136,21 @@ defmodule Goth.Token do
        when is_map(credentials) and is_list(options) do
     url = Keyword.get(options, :url, @default_url)
     scope = Keyword.get(options, :scope, @default_scope)
-    jwt = jwt(scope, credentials)
+    sub = Keyword.get(options, :sub)
+
+    jwt = jwt(scope, credentials, sub)
+
     headers = [{"content-type", "application/x-www-form-urlencoded"}]
     grant_type = "urn:ietf:params:oauth:grant-type:jwt-bearer"
     body = "grant_type=#{grant_type}&assertion=#{jwt}"
-    Goth.HTTPClient.request(config.http_client, :post, url, headers, body, [])
+
+    result =
+      Goth.HTTPClient.request(config.http_client, :post, url, headers, body, [])
+      |> handle_response()
+
+    with {:ok, map} <- result do
+      {:ok, Map.merge(map, %{"scope" => scope, "sub" => sub})}
+    end
   end
 
   defp request(%{source: {:refresh_token, credentials, options}} = config)
@@ -170,6 +170,7 @@ defmodule Goth.Token do
       )
 
     Goth.HTTPClient.request(config.http_client, :post, url, headers, body, [])
+    |> handle_response()
   end
 
   defp request(%{source: {:metadata, options}} = config) when is_list(options) do
@@ -177,27 +178,57 @@ defmodule Goth.Token do
     url = Keyword.get(options, :url, "http://metadata.google.internal")
     url = "#{url}/computeMetadata/v1/instance/service-accounts/#{account}/token"
     headers = [{"metadata-flavor", "Google"}]
+
     Goth.HTTPClient.request(config.http_client, :get, url, headers, "", [])
+    |> handle_response()
   end
 
-  defp jwt(scope, %{
-         "private_key" => private_key,
-         "client_email" => client_email,
-         "token_uri" => token_uri
-       }) do
+  defp handle_response({:ok, %{status: 200} = response}) do
+    Jason.decode(response.body)
+  end
+
+  defp handle_response({:ok, response}) do
+    message = """
+    unexpected status #{response.status} from Google
+
+    #{response.body}
+    """
+
+    {:error, RuntimeError.exception(message)}
+  end
+
+  defp handle_response({:error, exception}) do
+    {:error, exception}
+  end
+
+  defp jwt(
+         scope,
+         %{
+           "private_key" => private_key,
+           "client_email" => client_email,
+         },
+         sub
+       ) do
     jwk = JOSE.JWK.from_pem(private_key)
     header = %{"alg" => "RS256", "typ" => "JWT"}
     unix_time = System.system_time(:second)
 
-    claim_set = %{
+    claims = %{
       "iss" => client_email,
       "scope" => scope,
-      "aud" => token_uri,
+      "aud" => "https://www.googleapis.com/oauth2/v4/token",
       "exp" => unix_time + 3600,
       "iat" => unix_time
     }
 
-    JOSE.JWT.sign(jwk, header, claim_set) |> JOSE.JWS.compact() |> elem(1)
+    claims =
+      if sub do
+        Map.put(claims, "sub", sub)
+      else
+        claims
+      end
+
+    JOSE.JWT.sign(jwk, header, claims) |> JOSE.JWS.compact() |> elem(1)
   end
 
   # Everything below is deprecated.
