@@ -45,6 +45,27 @@ defmodule Goth.TokenTest do
     assert token.sub == "bob@example.com"
   end
 
+  test "fetch/1 with service account and multiple scopes" do
+    bypass = Bypass.open()
+
+    Bypass.expect(bypass, fn conn ->
+      body =
+        ~s|{"access_token":"dummy","scope":"dummy_scope","expires_in":3599,"token_type":"Bearer"}|
+
+      Plug.Conn.resp(conn, 200, body)
+    end)
+
+    config = %{
+      source:
+        {:service_account, random_service_account_credentials(),
+          url: "http://localhost:#{bypass.port}",
+          scopes: ["aaa", "bbb"]}
+    }
+
+    {:ok, token} = Goth.Token.fetch(config)
+    assert token.scope == "aaa bbb"
+  end
+
   test "fetch/1 with invalid response" do
     bypass = Bypass.open()
 
