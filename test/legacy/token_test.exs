@@ -63,16 +63,16 @@ defmodule Goth.Legacy.TokenTest do
       )
     end)
 
-    assert {:ok, %Token{token: "123", account: :default}} = Token.for_scope("random")
+    assert {:ok, %Token{token: "123", account: :default}} = for_scope("random")
 
     assert {:ok, %Token{token: "123", account: :default}} =
-             Token.for_scope("random", "sub@example.com")
+             for_scope("random", "sub@example.com")
   end
 
   test "it will not raise when token cannot be retrieved from the API" do
     orig = Application.get_env(:goth, :endpoint)
     Application.put_env(:goth, :endpoint, "http://lkjoine.lkj")
-    assert {:error, _} = Token.for_scope("lkjlkjlkj")
+    assert {:error, _} = for_scope("lkjlkjlkj")
     Application.put_env(:goth, :endpoint, orig)
   end
 
@@ -100,7 +100,7 @@ defmodule Goth.Legacy.TokenTest do
               token: "123",
               account: "test-multicredentials-1@my-project.iam.gserviceaccount.com"
             }} =
-             Token.for_scope(
+             for_scope(
                {"test-multicredentials-1@my-project.iam.gserviceaccount.com", "random"}
              )
 
@@ -109,7 +109,7 @@ defmodule Goth.Legacy.TokenTest do
               token: "123",
               account: "test-multicredentials-1@my-project.iam.gserviceaccount.com"
             }} =
-             Token.for_scope(
+             for_scope(
                {"test-multicredentials-1@my-project.iam.gserviceaccount.com", "random"},
                "sub@example.com"
              )
@@ -130,12 +130,12 @@ defmodule Goth.Legacy.TokenTest do
       )
     end)
 
-    assert {:ok, %Token{token: access_token}} = Token.for_scope("another-random")
+    assert {:ok, %Token{token: access_token}} = for_scope("another-random")
     assert access_token != nil
 
     Bypass.down(bypass)
 
-    assert {:ok, %Token{token: ^access_token}} = Token.for_scope("another-random")
+    assert {:ok, %Token{token: ^access_token}} = for_scope("another-random")
   end
 
   test "it will pull a token from the token store if cached when sub is provided", %{
@@ -162,14 +162,14 @@ defmodule Goth.Legacy.TokenTest do
     end)
 
     assert {:ok, %Token{token: access_token}} =
-             Token.for_scope("another-random-sub", "sub@example.com")
+             for_scope("another-random-sub", "sub@example.com")
 
     assert access_token != nil
 
     assert {:ok, %Token{token: ^access_token}} =
-             Token.for_scope("another-random-sub", "sub@example.com")
+             for_scope("another-random-sub", "sub@example.com")
 
-    {:ok, %Token{token: access_token_2}} = Token.for_scope("another-random-sub")
+    {:ok, %Token{token: access_token_2}} = for_scope("another-random-sub")
     assert access_token != access_token_2
   end
 
@@ -194,10 +194,16 @@ defmodule Goth.Legacy.TokenTest do
       )
     end)
 
-    assert {:ok, token} = Token.for_scope("first")
+    assert {:ok, token} = for_scope("first")
     assert token.token != nil
 
     assert {:ok, %Token{token: at2}} = Token.refresh!(token)
     assert token.token != at2
+  end
+
+  # ignore compile deprecation warnings
+
+  defp for_scope(scope, sub \\ nil) do
+    apply(Token, :for_scope, [scope, sub])
   end
 end
