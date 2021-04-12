@@ -105,7 +105,8 @@ defmodule MyApp.Application do
 
   def start(_type, _args) do
     credentials = "GCP_CREDENTIALS" |> System.fetch_env!() |> Jason.decode!()
-     source = {:service_account, credentials, []}
+    scopes = ["https://www.googleapis.com/auth/cloud-platform.read-only"]
+    source = {:service_account, credentials, scopes: scopes}
 
     children = [
       {Goth, name: MyApp.Goth, source: source}
