@@ -1,11 +1,6 @@
 defmodule Goth.Server do
   @moduledoc false
 
-  # remove when we require OTP 22
-  unless Code.ensure_loaded?(:persistent_term) do
-    raise "#{inspect(__MODULE__)} uses :persistent_term and thus requires OTP 21.2"
-  end
-
   use GenServer
   alias Goth.Token
 
@@ -26,12 +21,23 @@ defmodule Goth.Server do
   end
 
   def fetch(server) do
-    {config, token} = get(server)
+    {config, token} =
+      try do
+        get(server)
+      rescue
+        ArgumentError ->
+          {nil, nil}
+      end
 
-    if token do
-      {:ok, token}
-    else
-      Token.fetch(config)
+    cond do
+      token ->
+        {:ok, token}
+
+      config == nil ->
+        {:error, RuntimeError.exception("no token")}
+
+      true ->
+        Token.fetch(config)
     end
   end
 
@@ -43,6 +49,7 @@ defmodule Goth.Server do
       end)
 
     state = struct!(__MODULE__, opts)
+    :ets.new(state.name, [:named_table, read_concurrency: true])
 
     # given calculating JWT for each request is expensive, we do it once
     # on system boot to hopefully fill in the cache.
@@ -82,11 +89,11 @@ defmodule Goth.Server do
   end
 
   defp get(name) do
-    :persistent_term.get({__MODULE__, name})
+    :ets.lookup_element(name, :data, 2)
   end
 
   defp put(state, token) do
     config = Map.take(state, [:source, :http_client])
-    :persistent_term.put({__MODULE__, state.name}, {config, token})
+    :ets.insert(state.name, {:data, {config, token}})
   end
 end
