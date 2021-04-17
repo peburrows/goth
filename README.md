@@ -31,7 +31,7 @@ A simple library to generate and retrieve OAuth2 tokens for use with Google Clou
      use Application
 
      def start(_type, _args) do
-       credentials = "GOOGLE_APPLICATION_CREDENTIALS_JSON" |> System.fetch_env!() |> Jason.decode!()
+       credentials = "GOOGLE_APPLICATION_CREDENTIALS_JSON" |> System.fetch_env!() |> File.read!() |> Jason.decode!()
        source = {:service_account, credentials, []}
 
        children = [
@@ -104,7 +104,7 @@ defmodule MyApp.Application do
   use Application
 
   def start(_type, _args) do
-    credentials = "GCP_CREDENTIALS" |> System.fetch_env!() |> Jason.decode!()
+    credentials = "GCP_CREDENTIALS" |> System.fetch_env!() |> File.read!() |> Jason.decode!()
     scopes = ["https://www.googleapis.com/auth/cloud-platform.read-only"]
     source = {:service_account, credentials, scopes: scopes}
 
