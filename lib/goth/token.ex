@@ -117,34 +117,22 @@ defmodule Goth.Token do
         Goth.HTTPClient.init({Goth.HTTPClient.Hackney, []})
       end)
 
-    with {:ok, map} <- request(config) do
-      %{
-        "access_token" => access_token,
-        "expires_in" => expires_in,
-        "token_type" => token_type
-      } = map
-
-      token = %__MODULE__{
-        expires: System.system_time(:second) + expires_in,
-        scope: map["scope"],
-        token: access_token,
-        type: token_type,
-        sub: map["sub"]
-      }
-
-      {:ok, token}
-    end
+    request(config)
   end
 
   defp request(%{source: {:service_account, credentials, options}} = config)
        when is_map(credentials) and is_list(options) do
     url = Keyword.get(options, :url, @default_url)
-    jwt_scope =
-      Keyword.get(options, :scopes, @default_scopes)
-      |> Enum.join(" ")
     sub = Keyword.get(options, :sub)
+    scopes = Keyword.get(options, :scopes, @default_scopes)
+    jwt_scope = Enum.join(scopes, " ")
 
-    jwt = jwt(jwt_scope, credentials, sub)
+    claims =
+      [{"scope", jwt_scope}, {"sub", sub}]
+      |> Enum.reject(fn {_, v} -> is_nil(v) end)
+      |> Enum.into(%{})
+
+    jwt = jwt_encode(claims, credentials)
 
     headers = [{"content-type", "application/x-www-form-urlencoded"}]
     grant_type = "urn:ietf:params:oauth:grant-type:jwt-bearer"
@@ -154,8 +142,9 @@ defmodule Goth.Token do
       Goth.HTTPClient.request(config.http_client, :post, url, headers, body, [])
       |> handle_response()
 
-    with {:ok, map} <- result do
-      {:ok, Map.merge(map, %{"scope" => jwt_scope, "sub" => sub})}
+    case result do
+      {:ok, token} -> {:ok, %{token | scope: jwt_scope, sub: sub || token.sub}}
+      {:error, error} -> {:error, error}
     end
   end
 
@@ -189,8 +178,11 @@ defmodule Goth.Token do
     |> handle_response()
   end
 
-  defp handle_response({:ok, %{status: 200} = response}) do
-    Jason.decode(response.body)
+  defp handle_response({:ok, %{status: 200, body: body}}) do
+    case Jason.decode(body) do
+      {:ok, attrs} -> {:ok, build_token(attrs)}
+      {:error, reason} -> {:error, reason}
+    end
   end
 
   defp handle_response({:ok, response}) do
@@ -207,34 +199,43 @@ defmodule Goth.Token do
     {:error, exception}
   end
 
-  defp jwt(
-         scope,
-         %{
-           "private_key" => private_key,
-           "client_email" => client_email,
-         },
-         sub
-       ) do
+  defp jwt_encode(claims, %{"private_key" => private_key, "client_email" => client_email}) do
     jwk = JOSE.JWK.from_pem(private_key)
     header = %{"alg" => "RS256", "typ" => "JWT"}
     unix_time = System.system_time(:second)
 
-    claims = %{
+    default_claims = %{
       "iss" => client_email,
-      "scope" => scope,
       "aud" => "https://www.googleapis.com/oauth2/v4/token",
       "exp" => unix_time + 3600,
       "iat" => unix_time
     }
 
-    claims =
-      if sub do
-        Map.put(claims, "sub", sub)
-      else
-        claims
-      end
+    claims = Map.merge(default_claims, claims)
 
     JOSE.JWT.sign(jwk, header, claims) |> JOSE.JWS.compact() |> elem(1)
+  end
+
+  defp build_token(%{"access_token" => _} = attrs) do
+    %__MODULE__{
+      expires: System.system_time(:second) + attrs["expires_in"],
+      token: attrs["access_token"],
+      type: attrs["token_type"],
+      scope: attrs["scope"],
+      sub: attrs["sub"]
+    }
+  end
+
+  defp build_token(%{"id_token" => "" <> _ = jwt}) do
+    %JOSE.JWT{fields: fields} = JOSE.JWT.peek_payload(jwt)
+
+    %__MODULE__{
+      expires: fields["exp"],
+      token: jwt,
+      type: "Bearer",
+      scope: fields["aud"],
+      sub: fields["sub"]
+    }
   end
 
   # Everything below is deprecated.

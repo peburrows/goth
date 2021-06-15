@@ -58,12 +58,55 @@ defmodule Goth.TokenTest do
     config = %{
       source:
         {:service_account, random_service_account_credentials(),
-          url: "http://localhost:#{bypass.port}",
-          scopes: ["aaa", "bbb"]}
+         url: "http://localhost:#{bypass.port}", scopes: ["aaa", "bbb"]}
     }
 
     {:ok, token} = Goth.Token.fetch(config)
     assert token.scope == "aaa bbb"
+  end
+
+  test "fetch/1 with service account and OAuth ID token response" do
+    bypass = Bypass.open()
+
+    cloud_function_url = "https://europe-west1-project-id.cloudfunctions.net/test-function"
+
+    jwk_es256 = JOSE.JWK.generate_key({:ec, :secp256r1})
+    header = %{"alg" => "ES256", "typ" => "JWT"}
+
+    payload = %{
+      "aud" => cloud_function_url,
+      "azp" => "example@project-id.iam.gserviceaccount.com",
+      "email" => "example@project-id.iam.gserviceaccount.com",
+      "email_verified" => true,
+      "exp" => 1_623_761_103,
+      "iat" => 1_623_757_503,
+      "iss" => "https://accounts.google.com",
+      "sub" => "110725120108142672649"
+    }
+
+    jwt =
+      JOSE.JWS.sign(jwk_es256, Jason.encode!(payload), header) |> JOSE.JWS.compact() |> elem(1)
+
+    Bypass.expect(bypass, fn conn ->
+      body = ~s|{"id_token":"#{jwt}"}|
+
+      Plug.Conn.resp(conn, 200, body)
+    end)
+
+    config = %{
+      source:
+        {:service_account, random_service_account_credentials(),
+         url: "http://localhost:#{bypass.port}", scopes: [cloud_function_url]}
+    }
+
+    assert {:ok,
+            %{
+              token: ^jwt,
+              scope: ^cloud_function_url,
+              expires: 1_623_761_103,
+              type: "Bearer",
+              sub: "110725120108142672649"
+            }} = Goth.Token.fetch(config)
   end
 
   test "fetch/1 with invalid response" do
