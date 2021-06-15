@@ -30,54 +30,58 @@ defmodule Goth.Token do
 
   Config may contain the following keys:
 
-    * `:source` - One of:
-
-      * `{:service_account, credentials, options}` - use a service account.
-
-        `credentials` is a map and can contain the following keys:
-
-          * `"private_key"`
-
-          * `"client_email"`
-
-        `options` is a keywords list and can contain the following keys:
-
-          * `:url` - the URL of the authentication service, defaults to:
-            `"https://www.googleapis.com/oauth2/v4/token"`
-
-          * `:scopes` - the list of token scopes, defaults to `#{inspect(@default_scopes)}`
-
-          * `:sub` - an email of user being impersonated, defaults to `nil`
-
-      * `{:refresh_token, credentials, options}` - use a refresh token.
-
-        `credentials` is a map and can contain the following keys:
-
-          * `"refresh_token"`
-
-          * `"client_id"`
-
-          * `"client_secret"`
-
-        `options` is a keywords list and can contain the following keys:
-
-          * `:url` - the URL of the authentication service, defaults to:
-            `"https://www.googleapis.com/oauth2/v4/token"`
-
-      * `{:metadata, options}` - use the Google metadata server.
-
-        `options` is a keywords list and can contain the following keys:
-
-          * `:account` - the name of the account to generate the token for, defaults to `"default"`
-
-          * `:url` - the URL of the metadata server, defaults to `"http://metadata.google.internal"`
+    * `:source` - See "Source" section below.
 
     * `:http_client` - HTTP client configuration, defaults to using `Goth.HTTPClient.Hackney`.
       See `Goth.HTTPClient` for more information.
 
+  ## Source
+
+  Source can be one of:
+
+  #### Service account - `{:service_account, credentials, options}`
+
+  The `credentials` is a map and can contain the following keys:
+
+    * `"private_key"`
+
+    * `"client_email"`
+
+  The `options` is a keywords list and can contain the following keys:
+
+    * `:url` - the URL of the authentication service, defaults to:
+      `"https://www.googleapis.com/oauth2/v4/token"`
+
+    * `:scopes` - the list of token scopes, defaults to `#{inspect(@default_scopes)}`
+
+    * `:sub` - an email of user being impersonated, defaults to `nil`
+
+  #### Refresh token - `{:refresh_token, credentials, options}`
+
+  The `credentials` is a map and can contain the following keys:
+
+    * `"refresh_token"`
+
+    * `"client_id"`
+
+    * `"client_secret"`
+
+  The `options` is a keywords list and can contain the following keys:
+
+    * `:url` - the URL of the authentication service, defaults to:
+      `"https://www.googleapis.com/oauth2/v4/token"`
+
+  #### Google metadata server - `{:metadata, options}`
+
+  The `options` is a keywords list and can contain the following keys:
+
+    * `:account` - the name of the account to generate the token for, defaults to `"default"`
+
+    * `:url` - the URL of the metadata server, defaults to `"http://metadata.google.internal"`
+
   ## Examples
 
-  ### Generate a token using a service account credentials file:
+  #### Generate a token using a service account credentials file:
 
       iex> credentials = "credentials.json" |> File.read!() |> Jason.decode!()
       iex> Goth.Token.fetch(%{source: {:service_account, credentials, []}})
@@ -87,7 +91,7 @@ defmodule Goth.Token do
 
       gcloud iam service-accounts keys create --key-file-type=json --iam-account=... credentials.json
 
-  ## Retrieve the token using a refresh token:
+  #### Retrieve the token using a refresh token:
 
       iex> credentials = "credentials.json" |> File.read!() |> Jason.decode!()
       iex> Goth.Token.fetch(%{source: {:refresh_token, credentials, []}})
@@ -97,7 +101,7 @@ defmodule Goth.Token do
 
       gcloud auth application-default login
 
-  ## Retrieve the token using the Google metadata server:
+  #### Retrieve the token using the Google metadata server:
 
       iex> Goth.Token.fetch(%{source: {:metadata, []}})
       {:ok, %Goth.Token{...}}
