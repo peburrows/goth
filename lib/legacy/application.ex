@@ -7,7 +7,11 @@ defmodule Goth.Application do
     envs = Application.get_all_env(:goth)
 
     if envs == [] do
-      Supervisor.start_link([], strategy: :one_for_one)
+      children = [
+        {Registry, keys: :unique, name: Goth.Registry}
+      ]
+
+      Supervisor.start_link(children, strategy: :one_for_one)
     else
       Goth.Supervisor.start_link(envs)
     end

@@ -28,7 +28,7 @@ defmodule Goth do
 
   ## Options
 
-    * `:name` - the name to register the server under.
+    * `:name` - a unique name to register the server under. It can be any term.
 
     * `:source` - the source to retrieve the token from.
 

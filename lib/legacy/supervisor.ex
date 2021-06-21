@@ -13,7 +13,8 @@ defmodule Goth.Supervisor do
   def init(envs) do
     children = [
       {Config, envs},
-      TokenStore
+      TokenStore,
+      {Registry, keys: :unique, name: Goth.Registry}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
