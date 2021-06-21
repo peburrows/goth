@@ -5,6 +5,7 @@ defmodule Goth.Server do
   alias Goth.Token
 
   @max_retries 3
+  @registry Goth.Registry
 
   defstruct [
     :name,
@@ -17,7 +18,7 @@ defmodule Goth.Server do
 
   def start_link(opts) do
     name = Keyword.fetch!(opts, :name)
-    GenServer.start_link(__MODULE__, opts, name: name)
+    GenServer.start_link(__MODULE__, opts, name: {:via, Registry, {@registry, name}})
   end
 
   def fetch(server) do
@@ -49,7 +50,6 @@ defmodule Goth.Server do
       end)
 
     state = struct!(__MODULE__, opts)
-    :ets.new(state.name, [:named_table, read_concurrency: true])
 
     # given calculating JWT for each request is expensive, we do it once
     # on system boot to hopefully fill in the cache.
@@ -89,11 +89,12 @@ defmodule Goth.Server do
   end
 
   defp get(name) do
-    :ets.lookup_element(name, :data, 2)
+    [{_pid, data}] = Registry.lookup(@registry, name)
+    data
   end
 
   defp put(state, token) do
     config = Map.take(state, [:source, :http_client])
-    :ets.insert(state.name, {:data, {config, token}})
+    Registry.update_value(@registry, state.name, fn _ -> {config, token} end)
   end
 end
