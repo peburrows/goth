@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-16.04
+    runs-on: ubuntu-latest
     env:
       MIX_ENV: test
     strategy:
@@ -16,11 +16,11 @@ jobs:
       matrix:
         include:
           - pair:
-              elixir: 1.10.4
-              otp: 21.3.8.21
+              elixir: 1.10
+              otp: 21
           - pair:
-              elixir: 1.11.3
-              otp: 23.2.5
+              elixir: 1.12
+              otp: 24
             lint: lint
     steps:
       - uses: actions/checkout@v2
@@ -30,10 +30,9 @@ jobs:
           otp-version: ${{matrix.pair.otp}}
           elixir-version: ${{matrix.pair.elixir}}
 
-      - name: Install Dependencies
-        run: mix deps.get --only test
+      - name: mix deps.get
 
-      - run: mix deps.get && mix deps.unlock --check-unused
+      - run: mix deps.unlock --check-unused
         if: ${{ matrix.lint }}
 
       - run: mix deps.compile
