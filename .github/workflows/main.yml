@@ -30,7 +30,7 @@ jobs:
           otp-version: ${{matrix.pair.otp}}
           elixir-version: ${{matrix.pair.elixir}}
 
-      - name: mix deps.get
+      - run: mix deps.get
 
       - run: mix deps.unlock --check-unused
         if: ${{ matrix.lint }}
