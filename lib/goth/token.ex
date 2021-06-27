@@ -127,10 +127,8 @@ defmodule Goth.Token do
     scopes = Keyword.get(options, :scopes, @default_scopes)
     jwt_scope = Enum.join(scopes, " ")
 
-    claims =
-      [{"scope", jwt_scope}, {"sub", sub}]
-      |> Enum.reject(fn {_, v} -> is_nil(v) end)
-      |> Enum.into(%{})
+claims = %{"scope" => jwt_scope}
+claims = if sub, do: Map.put(claims, "sub", sub), else: claims
 
     jwt = jwt_encode(claims, credentials)
 
@@ -226,7 +224,7 @@ defmodule Goth.Token do
     }
   end
 
-  defp build_token(%{"id_token" => "" <> _ = jwt}) do
+  defp build_token(%{"id_token" => jwt}) when is_binary(jwt) do
     %JOSE.JWT{fields: fields} = JOSE.JWT.peek_payload(jwt)
 
     %__MODULE__{
