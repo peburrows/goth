@@ -110,7 +110,7 @@ defmodule Goth.Token do
   for more information on metadata server.
   """
   @doc since: "1.3.0"
-  @spec fetch(map()) :: {:ok, t()} | {:error, Exception.t}
+  @spec fetch(map()) :: {:ok, t()} | {:error, Exception.t()}
   def fetch(config) when is_map(config) do
     config =
       Map.put_new_lazy(config, :http_client, fn ->
@@ -127,8 +127,8 @@ defmodule Goth.Token do
     scopes = Keyword.get(options, :scopes, @default_scopes)
     jwt_scope = Enum.join(scopes, " ")
 
-claims = %{"scope" => jwt_scope}
-claims = if sub, do: Map.put(claims, "sub", sub), else: claims
+    claims = %{"scope" => jwt_scope}
+    claims = if sub, do: Map.put(claims, "sub", sub), else: claims
 
     jwt = jwt_encode(claims, credentials)
 

@@ -5,16 +5,13 @@ defmodule Goth.TokenTest do
     bypass = Bypass.open()
 
     Bypass.expect(bypass, fn conn ->
-      body =
-        ~s|{"access_token":"dummy","scope":"dummy_scope","expires_in":3599,"token_type":"Bearer"}|
+      body = ~s|{"access_token":"dummy","scope":"dummy_scope","expires_in":3599,"token_type":"Bearer"}|
 
       Plug.Conn.resp(conn, 200, body)
     end)
 
     config = %{
-      source:
-        {:service_account, random_service_account_credentials(),
-         url: "http://localhost:#{bypass.port}"}
+      source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"}
     }
 
     {:ok, token} = Goth.Token.fetch(config)
@@ -26,8 +23,7 @@ defmodule Goth.TokenTest do
     bypass = Bypass.open()
 
     Bypass.expect(bypass, fn conn ->
-      body =
-        ~s|{"access_token":"dummy","scope":"dummy_scope","expires_in":3599,"token_type":"Bearer"}|
+      body = ~s|{"access_token":"dummy","scope":"dummy_scope","expires_in":3599,"token_type":"Bearer"}|
 
       Plug.Conn.resp(conn, 200, body)
     end)
@@ -35,8 +31,7 @@ defmodule Goth.TokenTest do
     config = %{
       source:
         {:service_account, random_service_account_credentials(),
-          url: "http://localhost:#{bypass.port}",
-          sub: "bob@example.com"}
+         url: "http://localhost:#{bypass.port}", sub: "bob@example.com"}
     }
 
     {:ok, token} = Goth.Token.fetch(config)
@@ -49,8 +44,7 @@ defmodule Goth.TokenTest do
     bypass = Bypass.open()
 
     Bypass.expect(bypass, fn conn ->
-      body =
-        ~s|{"access_token":"dummy","scope":"dummy_scope","expires_in":3599,"token_type":"Bearer"}|
+      body = ~s|{"access_token":"dummy","scope":"dummy_scope","expires_in":3599,"token_type":"Bearer"}|
 
       Plug.Conn.resp(conn, 200, body)
     end)
@@ -84,8 +78,7 @@ defmodule Goth.TokenTest do
       "sub" => "110725120108142672649"
     }
 
-    jwt =
-      JOSE.JWS.sign(jwk_es256, Jason.encode!(payload), header) |> JOSE.JWS.compact() |> elem(1)
+    jwt = JOSE.JWS.sign(jwk_es256, Jason.encode!(payload), header) |> JOSE.JWS.compact() |> elem(1)
 
     Bypass.expect(bypass, fn conn ->
       body = ~s|{"id_token":"#{jwt}"}|
@@ -118,9 +111,7 @@ defmodule Goth.TokenTest do
     end)
 
     config = %{
-      source:
-        {:service_account, random_service_account_credentials(),
-         url: "http://localhost:#{bypass.port}"}
+      source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"}
     }
 
     {:error, %Jason.DecodeError{}} = Goth.Token.fetch(config)
@@ -134,16 +125,14 @@ defmodule Goth.TokenTest do
     bypass = Bypass.open()
 
     Bypass.expect(bypass, fn conn ->
-      body =
-        ~s|{"access_token":"dummy","scope":"dummy_scope","expires_in":3599,"token_type":"Bearer"}|
+      body = ~s|{"access_token":"dummy","scope":"dummy_scope","expires_in":3599,"token_type":"Bearer"}|
 
       Plug.Conn.resp(conn, 200, body)
     end)
 
     config = %{
       source:
-        {:refresh_token,
-         %{"client_id" => "aaa", "client_secret" => "bbb", "refresh_token" => "ccc"},
+        {:refresh_token, %{"client_id" => "aaa", "client_secret" => "bbb", "refresh_token" => "ccc"},
          url: "http://localhost:#{bypass.port}"}
     }
 

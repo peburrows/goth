@@ -12,9 +12,7 @@ defmodule GothTest do
 
     config = [
       name: test,
-      source:
-        {:service_account, random_service_account_credentials(),
-         url: "http://localhost:#{bypass.port}"}
+      source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"}
     ]
 
     start_supervised!({Goth, config})
@@ -41,9 +39,7 @@ defmodule GothTest do
 
     Goth.Server.start_link(
       name: test,
-      source:
-        {:service_account, random_service_account_credentials(),
-         url: "http://localhost:#{bypass.port}"},
+      source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
       http_client: {Goth.HTTPClient.Hackney, []},
       retry_after: 10
     )
@@ -53,8 +49,7 @@ defmodule GothTest do
     assert_receive :pong, 1000
     assert_receive :pong, 1000
 
-    assert_receive {:EXIT, _,
-                    {%RuntimeError{message: "too many failed attempts to refresh" <> _}, _}},
+    assert_receive {:EXIT, _, {%RuntimeError{message: "too many failed attempts to refresh" <> _}, _}},
                    1000
   end
 
@@ -70,9 +65,7 @@ defmodule GothTest do
 
     config = [
       name: test,
-      source:
-        {:service_account, random_service_account_credentials(),
-         url: "http://localhost:#{bypass.port}"},
+      source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
       retries: 0
     ]
 
