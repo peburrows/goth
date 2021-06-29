@@ -3,9 +3,21 @@ defmodule Goth.TokenTest do
 
   test "fetch/1 with service account" do
     bypass = Bypass.open()
+    default_scope = "https://www.googleapis.com/auth/cloud-platform"
 
     Bypass.expect(bypass, fn conn ->
-      body = ~s|{"access_token":"dummy","scope":"dummy_scope","expires_in":3599,"token_type":"Bearer"}|
+      assert %{
+               "grant_type" => "urn:ietf:params:oauth:grant-type:jwt-bearer",
+               "assertion" => assertion
+             } = featch_request_body(conn)
+
+      assert %{
+               "aud" => "https://www.googleapis.com/oauth2/v4/token",
+               "iss" => "alice@example.com",
+               "scope" => ^default_scope
+             } = jwt_decode(assertion)
+
+      body = ~s|{"access_token":"dummy","scope":"#{default_scope}","expires_in":3599,"token_type":"Bearer"}|
 
       Plug.Conn.resp(conn, 200, body)
     end)
@@ -16,27 +28,39 @@ defmodule Goth.TokenTest do
 
     {:ok, token} = Goth.Token.fetch(config)
     assert token.token == "dummy"
-    assert token.scope == "https://www.googleapis.com/auth/cloud-platform"
+    assert token.scope == default_scope
+    assert token.sub == nil
   end
 
   test "fetch/1 with service account and impersonating user" do
     bypass = Bypass.open()
+    default_scope = "https://www.googleapis.com/auth/cloud-platform"
 
     Bypass.expect(bypass, fn conn ->
-      body = ~s|{"access_token":"dummy","scope":"dummy_scope","expires_in":3599,"token_type":"Bearer"}|
+      assert %{
+               "grant_type" => "urn:ietf:params:oauth:grant-type:jwt-bearer",
+               "assertion" => assertion
+             } = featch_request_body(conn)
+
+      assert %{
+               "iss" => "alice@example.com",
+               "scope" => ^default_scope,
+               "sub" => "bob@example.com"
+             } = jwt_decode(assertion)
+
+      body = ~s|{"access_token":"dummy","scope":"#{default_scope}","expires_in":3599,"token_type":"Bearer"}|
 
       Plug.Conn.resp(conn, 200, body)
     end)
 
-    config = %{
-      source:
-        {:service_account, random_service_account_credentials(),
-         url: "http://localhost:#{bypass.port}", sub: "bob@example.com"}
-    }
+    creds = random_service_account_credentials()
+    bypass_url = "http://localhost:#{bypass.port}"
+    claims = %{"sub" => "bob@example.com", "scope" => default_scope}
+    service_account_source = {:service_account, creds, url: bypass_url, claims: claims}
 
-    {:ok, token} = Goth.Token.fetch(config)
+    {:ok, token} = Goth.Token.fetch(%{source: service_account_source})
     assert token.token == "dummy"
-    assert token.scope == "https://www.googleapis.com/auth/cloud-platform"
+    assert token.scope == default_scope
     assert token.sub == "bob@example.com"
   end
 
@@ -44,7 +68,14 @@ defmodule Goth.TokenTest do
     bypass = Bypass.open()
 
     Bypass.expect(bypass, fn conn ->
-      body = ~s|{"access_token":"dummy","scope":"dummy_scope","expires_in":3599,"token_type":"Bearer"}|
+      assert %{
+               "grant_type" => "urn:ietf:params:oauth:grant-type:jwt-bearer",
+               "assertion" => assertion
+             } = featch_request_body(conn)
+
+      assert %{"scope" => "aaa bbb"} = jwt_decode(assertion)
+
+      body = ~s|{"access_token":"dummy","scope":"aaa bbb","expires_in":3599,"token_type":"Bearer"}|
 
       Plug.Conn.resp(conn, 200, body)
     end)
@@ -173,4 +204,11 @@ defmodule Goth.TokenTest do
     {:ok, private_key}
     :public_key.pem_encode([:public_key.pem_entry_encode(:RSAPrivateKey, private_key)])
   end
+
+  defp featch_request_body(%Plug.Conn{} = conn) do
+    assert {:ok, req_body, _} = Plug.Conn.read_body(conn)
+    URI.decode_query(req_body)
+  end
+
+  def jwt_decode(jwt) when is_binary(jwt), do: jwt |> JOSE.JWT.peek_payload() |> Map.get(:fields)
 end
