@@ -52,9 +52,10 @@ defmodule Goth.Token do
     * `:url` - the URL of the authentication service, defaults to:
       `"https://www.googleapis.com/oauth2/v4/token"`
 
-    * `:scopes` - the list of token scopes, defaults to `#{inspect(@default_scopes)}`
+    * `:scopes` - the list of token scopes, defaults to `#{inspect(@default_scopes)}` (ignored if `:claims` present)
 
-    * `:sub` - an email of user being impersonated, defaults to `nil`
+    * `:claims` - self-signed JWT extra claims. Should be a map with string keys only.
+      A self-signed JWT will be [exchanged for a Google-signed ID token](https://cloud.google.com/functions/docs/securing/authenticating#exchanging_a_self-signed_jwt_for_a_google-signed_id_token)
 
   #### Refresh token - `{:refresh_token, credentials, options}`
 
@@ -91,6 +92,20 @@ defmodule Goth.Token do
 
       gcloud iam service-accounts keys create --key-file-type=json --iam-account=... credentials.json
 
+  #### Generate a cloud function invocation token using a service account credentials file:
+
+      iex> credentials = "credentials.json" |> File.read!() |> Jason.decode!()
+      ...> claims = %{"target_audience" => "https://<GCP_REGION>-<PROJECT_ID>.cloudfunctions.net/<CLOUD_FUNCTION_NAME>"}
+      ...> Goth.Token.fetch(%{source: {:service_account, credentials, [claims: claims]}})
+      {:ok, %Goth.Token{...}}
+
+  #### Generate an impersonated token using a service account credentials file:
+
+      iex> credentials = "credentials.json" |> File.read!() |> Jason.decode!()
+      ...> claims = %{"sub" => "<IMPERSONATED_ACCOUNT_EMAIL>"}
+      ...> Goth.Token.fetch(%{source: {:service_account, credentials, [claims: claims]}})
+      {:ok, %Goth.Token{...}}
+
   #### Retrieve the token using a refresh token:
 
       iex> credentials = "credentials.json" |> File.read!() |> Jason.decode!()
@@ -110,7 +125,7 @@ defmodule Goth.Token do
   for more information on metadata server.
   """
   @doc since: "1.3.0"
-  @spec fetch(map()) :: {:ok, t()} | {:error, Exception.t}
+  @spec fetch(map()) :: {:ok, t()} | {:error, Exception.t()}
   def fetch(config) when is_map(config) do
     config =
       Map.put_new_lazy(config, :http_client, fn ->
@@ -123,12 +138,15 @@ defmodule Goth.Token do
   defp request(%{source: {:service_account, credentials, options}} = config)
        when is_map(credentials) and is_list(options) do
     url = Keyword.get(options, :url, @default_url)
-    sub = Keyword.get(options, :sub)
-    scopes = Keyword.get(options, :scopes, @default_scopes)
-    jwt_scope = Enum.join(scopes, " ")
 
-claims = %{"scope" => jwt_scope}
-claims = if sub, do: Map.put(claims, "sub", sub), else: claims
+    claims =
+      Keyword.get_lazy(options, :claims, fn ->
+        scope = options |> Keyword.get(:scopes, @default_scopes) |> Enum.join(" ")
+        %{"scope" => scope}
+      end)
+
+    unless claims |> Map.keys() |> Enum.all?(&is_binary/1),
+      do: raise("expected service account claims to be a map with string keys, got a map: #{inspect(claims)}")
 
     jwt = jwt_encode(claims, credentials)
 
@@ -136,13 +154,16 @@ claims = if sub, do: Map.put(claims, "sub", sub), else: claims
     grant_type = "urn:ietf:params:oauth:grant-type:jwt-bearer"
     body = "grant_type=#{grant_type}&assertion=#{jwt}"
 
-    result =
-      Goth.HTTPClient.request(config.http_client, :post, url, headers, body, [])
-      |> handle_response()
+    response = Goth.HTTPClient.request(config.http_client, :post, url, headers, body, [])
 
-    case result do
-      {:ok, token} -> {:ok, %{token | scope: jwt_scope, sub: sub || token.sub}}
-      {:error, error} -> {:error, error}
+    case handle_response(response) do
+      {:ok, token} ->
+        sub = Map.get(claims, "sub", token.sub)
+        scope = Map.get(claims, "scope", token.scope)
+        {:ok, %{token | scope: scope, sub: sub}}
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 

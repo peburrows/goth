@@ -179,10 +179,9 @@ defmodule Goth.Config do
         rescue
           e ->
             if e.message =~ ":nxdomain" do
-                raise " Failed to retrieve project data from GCE internal metadata service.
+              raise " Failed to retrieve project data from GCE internal metadata service.
                    Either you haven't configured your GCP credentials, you aren't running on GCE, or both.
                    Please see README.md for instructions on configuring your credentials."
-
             else
               reraise e, __STACKTRACE__
             end
