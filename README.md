@@ -43,6 +43,30 @@ A simple library to generate and retrieve OAuth2 tokens for use with Google Clou
    end
    ```
 
+2.1. ...or use multiple credentials
+
+   ```elixir
+   defmodule MyApp.Application do
+     use Application
+
+     def start(_type, _args) do
+       Supervisor.start_link(load_credentials(), strategy: :one_for_one)
+     end
+
+     defp load_credentials do
+       [
+         {MyApp.Cred1, "CREDENTIALS_JSON_1"},
+         ...
+         {MyApp.CredN, "CREDENTIALS_JSON_N"}
+       ]
+       |> Enum.map(fn {id, env_var} ->
+         credentials = env_var |> System.fetch_env!() |> Jason.decode!()
+         source = {:service_account, credentials, []}
+         Supervisor.child_spec({Goth, name: id, source: source}, id: id)
+       end)
+   end
+   ```
+
 3. Fetch the token:
 
     ```elixir
