@@ -114,7 +114,10 @@ defmodule Goth.Token do
   def fetch(config) when is_map(config) do
     config =
       Map.put_new_lazy(config, :http_client, fn ->
-        Goth.HTTPClient.init({Goth.HTTPClient.Hackney, []})
+        case Application.get_env(Goth, :http_client) do
+          nil -> Goth.HTTPClient.init({Goth.HTTPClient.Hackney, []})
+          http_client -> Goth.HTTPClient.init(http_client)
+        end
       end)
 
     request(config)

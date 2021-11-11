@@ -88,6 +88,10 @@ defmodule Goth do
     opts
     |> Keyword.put_new(:retry_after, @retry_after)
     |> Keyword.put_new(:refresh_before, @refresh_before_minutes * 60)
-    |> Keyword.put_new(:http_client, {Goth.HTTPClient.Hackney, []})
+    |> Keyword.put_new(:http_client, http_client())
+  end
+
+  defp http_client do
+    Application.get_env(Goth, :http_client, {Goth.HTTPClient.Hackney, []})
   end
 end
