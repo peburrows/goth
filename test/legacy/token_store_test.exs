@@ -22,7 +22,7 @@ defmodule Goth.Legacy.TokenStoreTest do
     assert token.expires > :os.system_time(:seconds) + 900
   end
 
-  test "we can store an acces token for a specific account" do
+  test "we can store an access token for a specific account" do
     TokenStore.store({"account@example.com", "devstorage.readonly, prediction"}, %Token{
       token: "123",
       type: "Bearer",
@@ -100,7 +100,7 @@ defmodule Goth.Legacy.TokenStoreTest do
     assert token.expires > :os.system_time(:seconds) + 900
   end
 
-  test "tokens with the same scope but different sub are stored seperately" do
+  test "tokens with the same scope but different sub are stored separately" do
     scopes = "devstorage.readonly, prediction, drive.readonly"
     sub1 = "sub1@example.com"
     sub2 = "sub2@example.com"
