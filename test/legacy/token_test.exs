@@ -10,8 +10,7 @@ defmodule Goth.Legacy.TokenTest do
   end
 
   test "it can generate from response JSON" do
-    json =
-      ~s({"token_type":"Bearer","expires_in":3600,"access_token":"1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M"})
+    json = ~s({"token_type":"Bearer","expires_in":3600,"access_token":"1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M"})
 
     assert %Token{
              token: "1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M",
@@ -21,8 +20,7 @@ defmodule Goth.Legacy.TokenTest do
   end
 
   test "it can generate from response JSON with sub" do
-    json =
-      ~s({"token_type":"Bearer","expires_in":3600,"access_token":"1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M"})
+    json = ~s({"token_type":"Bearer","expires_in":3600,"access_token":"1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M"})
 
     assert %Token{
              token: "1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M",
@@ -34,8 +32,7 @@ defmodule Goth.Legacy.TokenTest do
   end
 
   test "it can generate from response JSON with sub and account" do
-    json =
-      ~s({"token_type":"Bearer","expires_in":3600,"access_token":"1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M"})
+    json = ~s({"token_type":"Bearer","expires_in":3600,"access_token":"1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M"})
 
     assert %Token{
              token: "1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M",
@@ -47,8 +44,7 @@ defmodule Goth.Legacy.TokenTest do
   end
 
   test "it calculates the expiration from the expires_in attr" do
-    json =
-      ~s({"token_type":"Bearer","expires_in":3600,"access_token":"1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M"})
+    json = ~s({"token_type":"Bearer","expires_in":3600,"access_token":"1/8xbJqaOZXSUZbHLl5EOtu1pxz3fmmetKx9W8CV4t79M"})
 
     token = Token.from_response_json("my-scope", json)
     assert token.expires > :os.system_time(:seconds) + 3000
@@ -65,8 +61,7 @@ defmodule Goth.Legacy.TokenTest do
 
     assert {:ok, %Token{token: "123", account: :default}} = for_scope("random")
 
-    assert {:ok, %Token{token: "123", account: :default}} =
-             for_scope("random", "sub@example.com")
+    assert {:ok, %Token{token: "123", account: :default}} = for_scope("random", "sub@example.com")
   end
 
   test "it will not raise when token cannot be retrieved from the API" do
@@ -99,10 +94,7 @@ defmodule Goth.Legacy.TokenTest do
             %Token{
               token: "123",
               account: "test-multicredentials-1@my-project.iam.gserviceaccount.com"
-            }} =
-             for_scope(
-               {"test-multicredentials-1@my-project.iam.gserviceaccount.com", "random"}
-             )
+            }} = for_scope({"test-multicredentials-1@my-project.iam.gserviceaccount.com", "random"})
 
     assert {:ok,
             %Token{
@@ -161,13 +153,11 @@ defmodule Goth.Legacy.TokenTest do
       )
     end)
 
-    assert {:ok, %Token{token: access_token}} =
-             for_scope("another-random-sub", "sub@example.com")
+    assert {:ok, %Token{token: access_token}} = for_scope("another-random-sub", "sub@example.com")
 
     assert access_token != nil
 
-    assert {:ok, %Token{token: ^access_token}} =
-             for_scope("another-random-sub", "sub@example.com")
+    assert {:ok, %Token{token: ^access_token}} = for_scope("another-random-sub", "sub@example.com")
 
     {:ok, %Token{token: access_token_2}} = for_scope("another-random-sub")
     assert access_token != access_token_2
