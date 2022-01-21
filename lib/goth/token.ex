@@ -90,7 +90,7 @@ defmodule Goth.Token do
 
   You can generate a credentials file containing service account using `gcloud` utility like this:
 
-      gcloud iam service-accounts keys create --key-file-type=json --iam-account=... credentials.json
+      $ gcloud iam service-accounts keys create --key-file-type=json --iam-account=... credentials.json
 
   #### Generate a cloud function invocation token using a service account credentials file:
 
@@ -114,7 +114,7 @@ defmodule Goth.Token do
 
   You can generate a credentials file containing refresh token using `gcloud` utility like this:
 
-      gcloud auth application-default login
+      $ gcloud auth application-default login
 
   #### Retrieve the token using the Google metadata server:
 
