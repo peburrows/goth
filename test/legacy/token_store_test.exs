@@ -1,7 +1,8 @@
 defmodule Goth.Legacy.TokenStoreTest do
   use ExUnit.Case
-  alias Goth.TokenStore
+
   alias Goth.Token
+  alias Goth.TokenStore
 
   setup do
     bypass = Bypass.open()

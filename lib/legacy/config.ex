@@ -199,11 +199,11 @@ defmodule Goth.Config do
     |> set_token_source
   end
 
-  defp set_token_source(map = %{"private_key" => _}) do
+  defp set_token_source(%{"private_key" => _} = map) do
     Map.put(map, "token_source", :oauth_jwt)
   end
 
-  defp set_token_source(map = %{"refresh_token" => _, "client_id" => _, "client_secret" => _}) do
+  defp set_token_source(%{"refresh_token" => _, "client_id" => _, "client_secret" => _} = map) do
     Map.put(map, "token_source", :oauth_refresh)
   end
 

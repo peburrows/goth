@@ -259,8 +259,8 @@ defmodule Goth.Token do
 
   # Everything below is deprecated.
 
-  alias Goth.TokenStore
   alias Goth.Client
+  alias Goth.TokenStore
 
   # Get a `%Goth.Token{}` for a particular `scope`. `scope` can be a single
   # scope or multiple scopes joined by a space. See [OAuth 2.0 Scopes for Google APIs](https://developers.google.com/identity/protocols/googlescopes) for all available scopes.
