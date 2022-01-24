@@ -191,7 +191,7 @@ defmodule Goth.TokenTest do
     assert token.scope == nil
   end
 
-  defp random_service_account_credentials() do
+  defp random_service_account_credentials do
     %{
       "private_key" => random_private_key(),
       "client_email" => "alice@example.com",
@@ -199,8 +199,8 @@ defmodule Goth.TokenTest do
     }
   end
 
-  defp random_private_key() do
-    private_key = :public_key.generate_key({:rsa, 2048, 65537})
+  defp random_private_key do
+    private_key = :public_key.generate_key({:rsa, 2048, 65_537})
     {:ok, private_key}
     :public_key.pem_encode([:public_key.pem_entry_encode(:RSAPrivateKey, private_key)])
   end

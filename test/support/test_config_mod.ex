@@ -1,4 +1,6 @@
 defmodule Goth.TestConfigMod do
+  @moduledoc false
+
   use Goth.Config
 
   def init(config) do
