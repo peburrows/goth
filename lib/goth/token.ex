@@ -220,6 +220,8 @@ defmodule Goth.Token do
     {:ok, build_token(%{"id_token" => body})}
   end
 
+  defp handle_jwt_response(response), do: handle_response(response)
+
   defp handle_response({:ok, %{status: 200, body: body}}) do
     case Jason.decode(body) do
       {:ok, attrs} -> {:ok, build_token(attrs)}
