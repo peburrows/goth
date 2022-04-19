@@ -193,33 +193,38 @@ defmodule Goth.Token do
   defp request(%{source: {:metadata, options}} = config) when is_list(options) do
     account = Keyword.get(options, :account, "default")
     audience = Keyword.get(options, :audience, nil)
+    headers = [{"metadata-flavor", "Google"}]
     url = Keyword.get(options, :url, "http://metadata.google.internal")
 
-    url =
-      case audience do
-        nil ->
-          url = "#{url}/computeMetadata/v1/instance/service-accounts/#{account}/token"
+    case audience do
+      nil ->
+        url = "#{url}/computeMetadata/v1/instance/service-accounts/#{account}/token"
 
-        audience ->
-          url = "#{url}/computeMetadata/v1/instance/service-accounts/#{account}/identity?audience=#{audience}"
-      end
+        Goth.HTTPClient.request(config.http_client, :get, url, headers, "", [])
+        |> handle_response()
 
-    headers = [{"metadata-flavor", "Google"}]
+      audience ->
+        url = "#{url}/computeMetadata/v1/instance/service-accounts/#{account}/identity?audience=#{audience}"
 
-    Goth.HTTPClient.request(config.http_client, :get, url, headers, "", [])
-    |> handle_response()
+        Goth.HTTPClient.request(config.http_client, :get, url, headers, "", [])
+        |> handle_response(true)
+    end
   end
 
-  defp handle_response({:ok, %{status: 200, body: body}}) do
-    IO.puts(inspect(body, pretty: true))
+  defp handle_response(response, jwt_body \\ false)
 
+  defp handle_response({:ok, %{status: 200, body: body}}, false) do
     case Jason.decode(body) do
       {:ok, attrs} -> {:ok, build_token(attrs)}
       {:error, reason} -> {:error, reason}
     end
   end
 
-  defp handle_response({:ok, response}) do
+  defp handle_response({:ok, %{status: 200, body: body}}, true) do
+    {:ok, build_token(%{"id_token" => body})}
+  end
+
+  defp handle_response({:ok, response}, _jwt_body) do
     message = """
     unexpected status #{response.status} from Google
 
@@ -229,7 +234,7 @@ defmodule Goth.Token do
     {:error, RuntimeError.exception(message)}
   end
 
-  defp handle_response({:error, exception}) do
+  defp handle_response({:error, exception}, _jwt_body) do
     {:error, exception}
   end
 
