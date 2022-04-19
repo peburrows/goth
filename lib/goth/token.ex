@@ -81,7 +81,7 @@ defmodule Goth.Token do
     * `:url` - the URL of the metadata server, defaults to `"http://metadata.google.internal"`
 
     * `:audience` - the audience you want an identity token for, default to `nil`
-      If this parameter is provided, an identity token is provided instead of an access token
+      If this parameter is provided, an identity token is returned instead of an access token
 
   ## Examples
 
@@ -191,40 +191,43 @@ defmodule Goth.Token do
   end
 
   defp request(%{source: {:metadata, options}} = config) when is_list(options) do
-    account = Keyword.get(options, :account, "default")
-    audience = Keyword.get(options, :audience, nil)
+    {url, audience} = metadata_options(options)
     headers = [{"metadata-flavor", "Google"}]
-    url = Keyword.get(options, :url, "http://metadata.google.internal")
+    response = Goth.HTTPClient.request(config.http_client, :get, url, headers, "", [])
 
     case audience do
-      nil ->
-        url = "#{url}/computeMetadata/v1/instance/service-accounts/#{account}/token"
-
-        Goth.HTTPClient.request(config.http_client, :get, url, headers, "", [])
-        |> handle_response()
-
-      audience ->
-        url = "#{url}/computeMetadata/v1/instance/service-accounts/#{account}/identity?audience=#{audience}"
-
-        Goth.HTTPClient.request(config.http_client, :get, url, headers, "", [])
-        |> handle_response(true)
+      nil -> handle_response(response)
+      _ -> handle_jwt_response(response)
     end
   end
 
-  defp handle_response(response, jwt_body \\ false)
+  defp metadata_options(options) do
+    account = Keyword.get(options, :account, "default")
+    audience = Keyword.get(options, :audience, nil)
+    path = "/computeMetadata/v1/instance/service-accounts/"
+    base_url = Keyword.get(options, :url, "http://metadata.google.internal")
 
-  defp handle_response({:ok, %{status: 200, body: body}}, false) do
+    url =
+      case audience do
+        nil -> "#{base_url}#{path}#{account}/token"
+        audience -> "#{base_url}#{path}#{account}/identity?audience=#{audience}"
+      end
+
+    {url, audience}
+  end
+
+  defp handle_jwt_response({:ok, %{status: 200, body: body}}) do
+    handle_response({:ok, %{status: 200, body: %{"id_token" => body}}})
+  end
+
+  defp handle_response({:ok, %{status: 200, body: body}}) do
     case Jason.decode(body) do
       {:ok, attrs} -> {:ok, build_token(attrs)}
       {:error, reason} -> {:error, reason}
     end
   end
 
-  defp handle_response({:ok, %{status: 200, body: body}}, true) do
-    {:ok, build_token(%{"id_token" => body})}
-  end
-
-  defp handle_response({:ok, response}, _jwt_body) do
+  defp handle_response({:ok, response}) do
     message = """
     unexpected status #{response.status} from Google
 
@@ -234,7 +237,7 @@ defmodule Goth.Token do
     {:error, RuntimeError.exception(message)}
   end
 
-  defp handle_response({:error, exception}, _jwt_body) do
+  defp handle_response({:error, exception}) do
     {:error, exception}
   end
 
