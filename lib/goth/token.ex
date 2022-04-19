@@ -217,7 +217,7 @@ defmodule Goth.Token do
   end
 
   defp handle_jwt_response({:ok, %{status: 200, body: body}}) do
-    handle_response({:ok, %{status: 200, body: %{"id_token" => body}}})
+    {:ok, build_token(%{"id_token" => body})}
   end
 
   defp handle_response({:ok, %{status: 200, body: body}}) do
