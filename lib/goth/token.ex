@@ -80,6 +80,9 @@ defmodule Goth.Token do
 
     * `:url` - the URL of the metadata server, defaults to `"http://metadata.google.internal"`
 
+    * `:audience` - the audience you want an identity token for, default to `nil`
+      If this parameter is provided, an identity token is provided instead of an access token
+
   ## Examples
 
   #### Generate a token using a service account credentials file:
@@ -189,8 +192,18 @@ defmodule Goth.Token do
 
   defp request(%{source: {:metadata, options}} = config) when is_list(options) do
     account = Keyword.get(options, :account, "default")
+    audience = Keyword.get(options, :audience, nil)
     url = Keyword.get(options, :url, "http://metadata.google.internal")
-    url = "#{url}/computeMetadata/v1/instance/service-accounts/#{account}/token"
+
+    url =
+      case audience do
+        nil ->
+          url = "#{url}/computeMetadata/v1/instance/service-accounts/#{account}/token"
+
+        audience ->
+          url = "#{url}/computeMetadata/v1/instance/service-accounts/#{account}/identity?audience=#{audience}"
+      end
+
     headers = [{"metadata-flavor", "Google"}]
 
     Goth.HTTPClient.request(config.http_client, :get, url, headers, "", [])
