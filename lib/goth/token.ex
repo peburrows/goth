@@ -211,6 +211,8 @@ defmodule Goth.Token do
   end
 
   defp handle_response({:ok, %{status: 200, body: body}}) do
+    IO.puts(inspect(body, pretty: true))
+
     case Jason.decode(body) do
       {:ok, attrs} -> {:ok, build_token(attrs)}
       {:error, reason} -> {:error, reason}
