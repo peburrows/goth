@@ -84,7 +84,7 @@ defmodule Goth.Server do
 
   defp store_and_schedule_refresh(state, token) do
     put(state, token)
-    time_in_seconds = max(token.expires - System.system_time(:second) - state.refresh_before, 0)
+    time_in_seconds = max(token.expires - :os.system_time(:second) - state.refresh_before, 0)
     Process.send_after(self(), :refresh, time_in_seconds * 1000)
   end
 

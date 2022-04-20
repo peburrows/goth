@@ -221,7 +221,7 @@ defmodule Goth.Token do
   defp jwt_encode(claims, %{"private_key" => private_key, "client_email" => client_email}) do
     jwk = JOSE.JWK.from_pem(private_key)
     header = %{"alg" => "RS256", "typ" => "JWT"}
-    unix_time = System.system_time(:second)
+    unix_time = :os.system_time(:second)
 
     default_claims = %{
       "iss" => client_email,
@@ -237,7 +237,7 @@ defmodule Goth.Token do
 
   defp build_token(%{"access_token" => _} = attrs) do
     %__MODULE__{
-      expires: System.system_time(:second) + attrs["expires_in"],
+      expires: :os.system_time(:second) + attrs["expires_in"],
       token: attrs["access_token"],
       type: attrs["token_type"],
       scope: attrs["scope"],

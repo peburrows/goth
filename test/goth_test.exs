@@ -2,7 +2,7 @@ defmodule GothTest do
   use ExUnit.Case, async: true
 
   test "fetch/1", %{test: test} do
-    now = System.system_time(:second)
+    now = :os.system_time(:second)
     bypass = Bypass.open()
 
     Bypass.expect(bypass, fn conn ->
