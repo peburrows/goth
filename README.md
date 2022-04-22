@@ -153,7 +153,6 @@ end
 
 For more information on earlier versions of Goth, [see v1.2.0 documentation on hexdocs.pm](https://hexdocs.pm/goth/1.2.0).
 
-
 ## Community resources
 
-[How to upload on YouTube Data API with elixir ?](https://mrdotb.com/posts/upload-on-youtube-with-elixir/)
+  * [How to upload on YouTube Data API with elixir ?](https://mrdotb.com/posts/upload-on-youtube-with-elixir/)
