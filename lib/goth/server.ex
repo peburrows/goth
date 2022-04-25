@@ -21,33 +21,17 @@ defmodule Goth.Server do
 
   def start_link(opts) do
     name = Keyword.fetch!(opts, :name)
-    GenServer.start_link(__MODULE__, opts, name: {:via, Registry, {@registry, name}})
+    GenServer.start_link(__MODULE__, opts, name: registry_name(name))
   end
 
-  def fetch(server) do
-    {config, token} =
-      try do
-        get(server)
-      rescue
-        ArgumentError ->
-          {nil, nil}
-      end
-
-    cond do
-      token ->
-        {:ok, token}
-
-      config == nil ->
-        {:error, RuntimeError.exception("no token")}
-
-      true ->
-        Token.fetch(config)
-    end
+  def fetch(name) do
+    GenServer.call(registry_name(name), :fetch)
   end
 
   @impl true
   def init(opts) when is_list(opts) do
     {backoff_opts, opts} = Keyword.split(opts, [:backoff_type, :backoff_min, :backoff_max])
+    {async, opts} = Keyword.pop(opts, :async)
 
     state = struct!(__MODULE__, opts)
 
@@ -57,6 +41,21 @@ defmodule Goth.Server do
       |> Map.replace!(:backoff, Backoff.new(backoff_opts))
       |> Map.replace!(:retries, state.max_retries)
 
+    if async do
+      {:ok, state, {:continue, :async_prefetch}}
+    else
+      send(self(), :prefetch)
+      {:ok, state}
+    end
+  end
+
+  @impl true
+  def handle_continue(:async_prefetch, state) do
+    do_fetch(state)
+    {:noreply, state}
+  end
+
+  defp do_fetch(state) do
     # given calculating JWT for each request is expensive, we do it once
     # on system boot to hopefully fill in the cache.
     case Token.fetch(state) do
@@ -67,8 +66,34 @@ defmodule Goth.Server do
         put(state, nil)
         send(self(), :refresh)
     end
+  end
 
-    {:ok, state}
+  @impl true
+  def handle_call(:fetch, _from, %{name: name} = state) do
+    reply =
+      name
+      |> maybe_get_cache()
+      |> maybe_fetch_token()
+
+    {:reply, reply, state}
+  end
+
+  defp maybe_get_cache(name) do
+    get(name)
+  rescue
+    ArgumentError -> {nil, nil}
+  end
+
+  defp maybe_fetch_token({nil = _state, nil = _token}) do
+    {:error, RuntimeError.exception("no token")}
+  end
+
+  defp maybe_fetch_token({state, nil = _token}) do
+    Token.fetch(state)
+  end
+
+  defp maybe_fetch_token({_state, token}) do
+    {:ok, token}
   end
 
   defp start_http_client({module, opts}) do
@@ -76,6 +101,11 @@ defmodule Goth.Server do
   end
 
   @impl true
+  def handle_info(:prefetch, state) do
+    do_fetch(state)
+    {:noreply, state}
+  end
+
   def handle_info(:refresh, state) do
     case Token.fetch(state) do
       {:ok, token} -> do_refresh(token, state)
@@ -115,5 +145,9 @@ defmodule Goth.Server do
   defp put(state, token) do
     config = Map.take(state, [:source, :http_client])
     Registry.update_value(@registry, state.name, fn _ -> {config, token} end)
+  end
+
+  defp registry_name(name) do
+    {:via, Registry, {@registry, name}}
   end
 end
