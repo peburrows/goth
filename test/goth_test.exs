@@ -27,7 +27,7 @@ defmodule GothTest do
   end
 
   @tag :capture_log
-  test "retries", %{test: test} do
+  test "retries with rand backoff", %{test: test} do
     Process.flag(:trap_exit, true)
     pid = self()
     bypass = Bypass.open()
@@ -41,7 +41,61 @@ defmodule GothTest do
       name: test,
       source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
       http_client: {Goth.HTTPClient.Hackney, []},
-      retry_after: 10
+      backoff: [backoff_type: :rand, backoff_min: 1, backoff_max: 1_000]
+    )
+
+    # higher timeouts since calculating JWT is expensive
+    assert_receive :pong, 1000
+    assert_receive :pong, 1000
+    assert_receive :pong, 1000
+
+    assert_receive {:EXIT, _, {%RuntimeError{message: "too many failed attempts to refresh" <> _}, _}},
+                   1000
+  end
+
+  @tag :capture_log
+  test "retries with exp backoff", %{test: test} do
+    Process.flag(:trap_exit, true)
+    pid = self()
+    bypass = Bypass.open()
+
+    Bypass.expect(bypass, fn conn ->
+      send(pid, :pong)
+      Plug.Conn.resp(conn, 500, "oops")
+    end)
+
+    Goth.Server.start_link(
+      name: test,
+      source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
+      http_client: {Goth.HTTPClient.Hackney, []},
+      backoff: [backoff_type: :exp, backoff_min: 1, backoff_max: 1_000]
+    )
+
+    # higher timeouts since calculating JWT is expensive
+    assert_receive :pong, 1000
+    assert_receive :pong, 1000
+    assert_receive :pong, 1000
+
+    assert_receive {:EXIT, _, {%RuntimeError{message: "too many failed attempts to refresh" <> _}, _}},
+                   1000
+  end
+
+  @tag :capture_log
+  test "retries with rand_exp backoff", %{test: test} do
+    Process.flag(:trap_exit, true)
+    pid = self()
+    bypass = Bypass.open()
+
+    Bypass.expect(bypass, fn conn ->
+      send(pid, :pong)
+      Plug.Conn.resp(conn, 500, "oops")
+    end)
+
+    Goth.Server.start_link(
+      name: test,
+      source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
+      http_client: {Goth.HTTPClient.Hackney, []},
+      backoff: [backoff_type: :rand_exp, backoff_min: 1, backoff_max: 1_000]
     )
 
     # higher timeouts since calculating JWT is expensive
