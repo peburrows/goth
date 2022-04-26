@@ -46,10 +46,12 @@ defmodule Goth.Server do
 
   @impl true
   def init(opts) when is_list(opts) do
+    {backoff_opts, opts} = Keyword.split(opts, [:backoff_type, :backoff_min, :backoff_max])
+
     opts =
       opts
       |> Keyword.update!(:http_client, &start_http_client/1)
-      |> Keyword.put(:backoff, Backoff.new(opts[:backoff] || []))
+      |> Keyword.put(:backoff, Backoff.new(backoff_opts))
 
     state = struct!(__MODULE__, opts)
 

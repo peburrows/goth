@@ -46,20 +46,12 @@ defmodule Goth do
       `Goth.HTTPClient` behaviour and `opts` is a keywords list to initialize the client with.
       Defaults to `{Goth.HTTPClient.Hackney, []}`.
 
-    * `backoff` - Options to configure the `Goth.Backoff` struct. It can be
-      a keyword list of the available options:
+    * `:backoff_min` - the minimum backoff interval (default: `1_000`)
 
-      - `type` - Defines the backoff type to generate the backoff state.
-                 Options: `:rand_exp`, `:exp`, `:rand`.
-                 Default: `:rand_exp`
+    * `:backoff_max` - the maximum backoff interval (default: `30_000`)
 
-      - `min`  - Defines the minimum value. It can't be less than `max` and
-                 should be greater than 0.
-                 Default: `1_000`
-
-      - `max`  - Defines the maximum value. It can't be less than `min` and
-                 should be greater than 0.
-                 Default: `30_000`
+    * `:backoff_type` - the backoff strategy, `:exp` for exponential, `:rand` for random and
+      `:rand_exp` for random exponential (default: `:rand_exp`)
 
   ## Examples
 
