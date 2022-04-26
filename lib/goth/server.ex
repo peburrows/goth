@@ -73,23 +73,24 @@ defmodule Goth.Server do
 
   @impl true
   def handle_info(:refresh, state) do
-    state
-    |> Token.fetch()
-    |> handle_refresh(state)
+    case Token.fetch(state) do
+      {:ok, token} -> do_refresh(token, state)
+      {:error, exception} -> handle_retry(exception, state)
+    end
   end
 
-  defp handle_refresh({:error, exception}, %{retries: 1}) do
+  defp handle_retry(exception, %{retries: 1}) do
     raise "too many failed attempts to refresh, last error: #{inspect(exception)}"
   end
 
-  defp handle_refresh({:error, _}, %{retries: retries, backoff: backoff} = state) do
+  defp handle_retry(_, %{retries: retries, backoff: backoff} = state) do
     {time_in_seconds, backoff} = Backoff.backoff(backoff)
     Process.send_after(self(), :refresh, time_in_seconds)
 
     {:noreply, %{state | retries: retries - 1, backoff: backoff}}
   end
 
-  defp handle_refresh({:ok, token}, %{backoff: backoff} = state) do
+  defp do_refresh(token, %{backoff: backoff} = state) do
     state = %{state | retries: @max_retries, backoff: Backoff.reset(backoff)}
     store_and_schedule_refresh(state, token)
 
