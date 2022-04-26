@@ -41,7 +41,7 @@ defmodule GothTest do
       name: test,
       source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
       http_client: {Goth.HTTPClient.Hackney, []},
-      retries: 3,
+      max_retries: 3,
       backoff_type: :rand,
       backoff_min: 1,
       backoff_max: 1_000
@@ -71,7 +71,7 @@ defmodule GothTest do
       name: test,
       source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
       http_client: {Goth.HTTPClient.Hackney, []},
-      retries: 3,
+      max_retries: 3,
       backoff_type: :exp,
       backoff_min: 1,
       backoff_max: 1_000
@@ -101,7 +101,7 @@ defmodule GothTest do
       name: test,
       source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
       http_client: {Goth.HTTPClient.Hackney, []},
-      retries: 3,
+      max_retries: 3,
       backoff_type: :rand_exp,
       backoff_min: 1,
       backoff_max: 1_000
@@ -129,7 +129,7 @@ defmodule GothTest do
     config = [
       name: test,
       source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
-      retries: 0
+      max_retries: 0
     ]
 
     start_supervised!({Goth, config})

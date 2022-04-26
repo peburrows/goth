@@ -15,6 +15,7 @@ defmodule Goth.Server do
     :http_client,
     :retry_after,
     :refresh_before,
+    max_retries: @max_retries,
     retries: @max_retries
   ]
 
@@ -48,12 +49,13 @@ defmodule Goth.Server do
   def init(opts) when is_list(opts) do
     {backoff_opts, opts} = Keyword.split(opts, [:backoff_type, :backoff_min, :backoff_max])
 
-    opts =
-      opts
-      |> Keyword.update!(:http_client, &start_http_client/1)
-      |> Keyword.put(:backoff, Backoff.new(backoff_opts))
-
     state = struct!(__MODULE__, opts)
+
+    state =
+      state
+      |> Map.update!(:http_client, &start_http_client/1)
+      |> Map.replace!(:backoff, Backoff.new(backoff_opts))
+      |> Map.replace!(:retries, state.max_retries)
 
     # given calculating JWT for each request is expensive, we do it once
     # on system boot to hopefully fill in the cache.
@@ -85,15 +87,15 @@ defmodule Goth.Server do
     raise "too many failed attempts to refresh, last error: #{inspect(exception)}"
   end
 
-  defp handle_retry(_, %{retries: retries, backoff: backoff} = state) do
-    {time_in_seconds, backoff} = Backoff.backoff(backoff)
+  defp handle_retry(_, state) do
+    {time_in_seconds, backoff} = Backoff.backoff(state.backoff)
     Process.send_after(self(), :refresh, time_in_seconds)
 
-    {:noreply, %{state | retries: retries - 1, backoff: backoff}}
+    {:noreply, %{state | retries: state.retries - 1, backoff: backoff}}
   end
 
-  defp do_refresh(token, %{backoff: backoff} = state) do
-    state = %{state | retries: @max_retries, backoff: Backoff.reset(backoff)}
+  defp do_refresh(token, state) do
+    state = %{state | retries: state.max_retries, backoff: Backoff.reset(state.backoff)}
     store_and_schedule_refresh(state, token)
 
     {:noreply, state}
