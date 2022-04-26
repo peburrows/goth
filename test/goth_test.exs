@@ -26,7 +26,7 @@ defmodule GothTest do
     {:ok, ^token} = Goth.fetch(test)
   end
 
-  test "async fetch", %{test: test} do
+  test "async prefetch", %{test: test} do
     now = System.system_time(:second)
     bypass = Bypass.open()
     pid = self()
@@ -40,7 +40,7 @@ defmodule GothTest do
     config = [
       name: test,
       source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
-      async: true
+      prefetch: :async
     ]
 
     start_supervised!({Goth, config})

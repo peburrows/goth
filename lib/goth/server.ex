@@ -31,7 +31,7 @@ defmodule Goth.Server do
   @impl true
   def init(opts) when is_list(opts) do
     {backoff_opts, opts} = Keyword.split(opts, [:backoff_type, :backoff_min, :backoff_max])
-    {async, opts} = Keyword.pop(opts, :async)
+    {prefetch, opts} = Keyword.pop(opts, :prefetch)
 
     state = struct!(__MODULE__, opts)
 
@@ -41,11 +41,13 @@ defmodule Goth.Server do
       |> Map.replace!(:backoff, Backoff.new(backoff_opts))
       |> Map.replace!(:retries, state.max_retries)
 
-    if async do
-      {:ok, state, {:continue, :async_prefetch}}
-    else
-      send(self(), :prefetch)
-      {:ok, state}
+    case prefetch || :sync do
+      :async ->
+        {:ok, state, {:continue, :async_prefetch}}
+
+      :sync ->
+        do_fetch(state)
+        {:ok, state}
     end
   end
 
@@ -101,11 +103,6 @@ defmodule Goth.Server do
   end
 
   @impl true
-  def handle_info(:prefetch, state) do
-    do_fetch(state)
-    {:noreply, state}
-  end
-
   def handle_info(:refresh, state) do
     case Token.fetch(state) do
       {:ok, token} -> do_refresh(token, state)
