@@ -51,6 +51,7 @@ defmodule Goth.Legacy.TokenStoreTest do
     assert is_reference(ref)
   end
 
+  @tag :capture_log
   test "an expired token is refreshed immediately", %{bypass: bypass} do
     Bypass.expect(bypass, fn conn ->
       Plug.Conn.resp(
