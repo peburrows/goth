@@ -61,6 +61,9 @@ defmodule Goth.Backoff do
   @spec new(keyword()) :: t()
   def new(opts) do
     case Keyword.get(opts, :type, @default_type) do
+      :stop ->
+        nil
+
       type when type in @supported_types ->
         {min, max} = min_max(opts)
         new(type, min, max)
