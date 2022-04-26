@@ -21,7 +21,7 @@ defmodule Goth.Backoff do
   ## Fields
 
     * `type`  - Defines the backoff type to be used
-                  for min/max generation.
+                for min/max generation.
 
     * `min`   - Minimum value to be used.
 
@@ -48,19 +48,19 @@ defmodule Goth.Backoff do
 
   ## Options:
 
-    * `backoff_type` - Defines the backoff type to generate the backoff state.
-                       Default: `:rand_exp`
+    * `type` - Defines the backoff type to generate the backoff state.
+               Default: `:rand_exp`
 
-    * `backoff_min`  - Defines the minimum value.
-                       Default: `1_000`
+    * `min`  - Defines the minimum value.
+               Default: `1_000`
 
-    * `backoff_max`  - Defines the maximum value.
-                       Default: `30_000`
+    * `max`  - Defines the maximum value.
+               Default: `30_000`
 
   """
   @spec new!(keyword()) :: t()
   def new!(opts) do
-    case Keyword.get(opts, :backoff_type, @default_type) do
+    case Keyword.get(opts, :type, @default_type) do
       type when type in @supported_types ->
         {min, max} = min_max(opts)
         new(type, min, max)
@@ -130,7 +130,7 @@ defmodule Goth.Backoff do
   @max 30_000
 
   defp min_max(opts) do
-    case {opts[:backoff_min], opts[:backoff_max]} do
+    case {opts[:min], opts[:max]} do
       {nil, nil} -> {@min, @max}
       {nil, max} -> {min(@min, max), max}
       {min, nil} -> {min, max(min, @max)}
