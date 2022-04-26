@@ -41,6 +41,7 @@ defmodule GothTest do
       name: test,
       source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
       http_client: {Goth.HTTPClient.Hackney, []},
+      retries: 3,
       backoff: [type: :rand, min: 1, max: 1_000]
     )
 
@@ -68,6 +69,7 @@ defmodule GothTest do
       name: test,
       source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
       http_client: {Goth.HTTPClient.Hackney, []},
+      retries: 3,
       backoff: [type: :exp, min: 1, max: 1_000]
     )
 
@@ -95,6 +97,7 @@ defmodule GothTest do
       name: test,
       source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
       http_client: {Goth.HTTPClient.Hackney, []},
+      retries: 3,
       backoff: [type: :rand_exp, min: 1, max: 1_000]
     )
 

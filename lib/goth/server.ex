@@ -5,7 +5,7 @@ defmodule Goth.Server do
   alias Goth.Backoff
   alias Goth.Token
 
-  @max_retries 3
+  @max_retries 20
   @registry Goth.Registry
 
   defstruct [
