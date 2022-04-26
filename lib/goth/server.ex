@@ -49,7 +49,7 @@ defmodule Goth.Server do
     opts =
       opts
       |> Keyword.update!(:http_client, &start_http_client/1)
-      |> Keyword.put(:backoff, start_backoff(opts[:backoff]))
+      |> Keyword.put(:backoff, Backoff.new(opts[:backoff] || []))
 
     state = struct!(__MODULE__, opts)
 
@@ -69,14 +69,6 @@ defmodule Goth.Server do
 
   defp start_http_client({module, opts}) do
     Goth.HTTPClient.init({module, opts})
-  end
-
-  defp start_backoff(nil) do
-    Backoff.new!([])
-  end
-
-  defp start_backoff(opts) do
-    Backoff.new!(opts)
   end
 
   @impl true
