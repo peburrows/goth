@@ -49,12 +49,15 @@ defmodule Goth.Backoff do
   ## Options:
 
     * `type` - Defines the backoff type to generate the backoff state.
+               Options: `:rand_exp`, `:exp`, `:rand`.
                Default: `:rand_exp`
 
-    * `min`  - Defines the minimum value.
+    * `min`  - Defines the minimum value. It can't be less than `max` and
+               should be greater than 0.
                Default: `1_000`
 
-    * `max`  - Defines the maximum value.
+    * `max`  - Defines the maximum value. It can't be less than `min` and
+               should be greater than 0.
                Default: `30_000`
 
   """

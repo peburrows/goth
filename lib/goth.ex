@@ -46,6 +46,21 @@ defmodule Goth do
       `Goth.HTTPClient` behaviour and `opts` is a keywords list to initialize the client with.
       Defaults to `{Goth.HTTPClient.Hackney, []}`.
 
+    * `backoff` - Options to configure the `Goth.Backoff` struct. It can be
+      a keyword list of the available options:
+
+      - `type` - Defines the backoff type to generate the backoff state.
+                 Options: `:rand_exp`, `:exp`, `:rand`.
+                 Default: `:rand_exp`
+
+      - `min`  - Defines the minimum value. It can't be less than `max` and
+                 should be greater than 0.
+                 Default: `1_000`
+
+      - `max`  - Defines the maximum value. It can't be less than `min` and
+                 should be greater than 0.
+                 Default: `30_000`
+
   ## Examples
 
   Generate a token using a service account credentials file:
