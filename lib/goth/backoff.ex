@@ -1,3 +1,6 @@
+# Based on:
+# https://github.com/elixir-ecto/db_connection/blob/v2.3.0/lib/db_connection/backoff.ex
+
 defmodule Goth.Backoff do
   @moduledoc false
 
