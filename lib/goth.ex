@@ -41,6 +41,8 @@ defmodule Goth do
       `Goth.HTTPClient` behaviour and `opts` is a keywords list to initialize the client with.
       Defaults to `{Goth.HTTPClient.Hackney, []}`.
 
+    * `:max_retries` - the maximum number of retries (default: `20`)
+
     * `:backoff_min` - the minimum backoff interval (default: `1_000`)
 
     * `:backoff_max` - the maximum backoff interval (default: `30_000`)
