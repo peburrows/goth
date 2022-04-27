@@ -24,14 +24,14 @@ defmodule Goth.Server do
     GenServer.start_link(__MODULE__, opts, name: registry_name(name))
   end
 
-  def fetch(name) do
-    read_from_ets(name) || GenServer.call(registry_name(name), :fetch)
+  def fetch(name, timeout \\ 5000) do
+    read_from_ets(name) || GenServer.call(registry_name(name), :fetch, timeout)
   end
 
   defp read_from_ets(name) do
     case Registry.lookup(@registry, name) do
       [{_pid, %Token{} = token}] -> {:ok, token}
-      _ -> nil
+      [] -> nil
     end
   rescue
     ArgumentError -> nil
@@ -40,7 +40,7 @@ defmodule Goth.Server do
   @impl true
   def init(opts) when is_list(opts) do
     {backoff_opts, opts} = Keyword.split(opts, [:backoff_type, :backoff_min, :backoff_max])
-    {prefetch, opts} = Keyword.pop(opts, :prefetch)
+    {prefetch, opts} = Keyword.pop(opts, :prefetch, :async)
 
     state = struct!(__MODULE__, opts)
 
@@ -50,23 +50,23 @@ defmodule Goth.Server do
       |> Map.replace!(:backoff, Backoff.new(backoff_opts))
       |> Map.replace!(:retries, state.max_retries)
 
-    case prefetch || :sync do
+    case prefetch do
       :async ->
         {:ok, state, {:continue, :async_prefetch}}
 
       :sync ->
-        do_prefetch(state)
+        prefetch(state)
         {:ok, state}
     end
   end
 
   @impl true
   def handle_continue(:async_prefetch, state) do
-    do_prefetch(state)
+    prefetch(state)
     {:noreply, state}
   end
 
-  defp do_prefetch(state) do
+  defp prefetch(state) do
     # given calculating JWT for each request is expensive, we do it once
     # on system boot to hopefully fill in the cache.
     case Token.fetch(state) do
@@ -85,13 +85,9 @@ defmodule Goth.Server do
   end
 
   defp fetch_and_schedule_refresh(state) do
-    case Token.fetch(state) do
-      {:ok, token} ->
-        store_and_schedule_refresh(state, token)
-        {:ok, token}
-
-      {:error, _} = error ->
-        error
+    with {:ok, token} <- Token.fetch(state) do
+      store_and_schedule_refresh(state, token)
+      {:ok, token}
     end
   end
 
