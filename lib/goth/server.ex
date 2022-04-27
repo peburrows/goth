@@ -25,27 +25,16 @@ defmodule Goth.Server do
   end
 
   def fetch(name) do
-    name
-    |> maybe_get_cache()
-    |> maybe_fetch_token(name)
+    read_from_ets(name) || GenServer.call(registry_name(name), :fetch)
   end
 
-  defp maybe_get_cache(name) do
-    get(name)
+  defp read_from_ets(name) do
+    case Registry.lookup(@registry, name) do
+      [{_pid, %Token{} = token}] -> {:ok, token}
+      _ -> nil
+    end
   rescue
-    ArgumentError -> {nil, nil}
-  end
-
-  defp maybe_fetch_token({_state, nil = _token}, name) do
-    GenServer.call(registry_name(name), :fetch)
-  end
-
-  defp maybe_fetch_token({_state, token}, _) do
-    {:ok, token}
-  end
-
-  defp maybe_fetch_token(_, _) do
-    {:error, RuntimeError.exception("no token")}
+    ArgumentError -> nil
   end
 
   @impl true
@@ -63,7 +52,6 @@ defmodule Goth.Server do
 
     case prefetch || :sync do
       :async ->
-        put(state, nil)
         {:ok, state, {:continue, :async_prefetch}}
 
       :sync ->
@@ -86,14 +74,25 @@ defmodule Goth.Server do
         store_and_schedule_refresh(state, token)
 
       {:error, _} ->
-        put(state, nil)
         send(self(), :refresh)
     end
   end
 
   @impl true
   def handle_call(:fetch, _from, state) do
-    {:reply, Token.fetch(state), state}
+    reply = read_from_ets(state.name) || fetch_and_schedule_refresh(state)
+    {:reply, reply, state}
+  end
+
+  defp fetch_and_schedule_refresh(state) do
+    case Token.fetch(state) do
+      {:ok, token} ->
+        store_and_schedule_refresh(state, token)
+        {:ok, token}
+
+      {:error, _} = error ->
+        error
+    end
   end
 
   defp start_http_client({module, opts}) do
@@ -127,19 +126,13 @@ defmodule Goth.Server do
   end
 
   defp store_and_schedule_refresh(state, token) do
-    put(state, token)
+    put(state.name, token)
     time_in_seconds = max(token.expires - System.system_time(:second) - state.refresh_before, 0)
     Process.send_after(self(), :refresh, time_in_seconds * 1000)
   end
 
-  defp get(name) do
-    [{_pid, data}] = Registry.lookup(@registry, name)
-    data
-  end
-
-  defp put(state, token) do
-    config = Map.take(state, [:source, :http_client])
-    Registry.update_value(@registry, state.name, fn _ -> {config, token} end)
+  defp put(name, token) do
+    Registry.update_value(@registry, name, fn _ -> token end)
   end
 
   defp registry_name(name) do
