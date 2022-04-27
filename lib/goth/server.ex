@@ -25,7 +25,27 @@ defmodule Goth.Server do
   end
 
   def fetch(name) do
+    name
+    |> maybe_get_cache()
+    |> maybe_fetch_token(name)
+  end
+
+  defp maybe_get_cache(name) do
+    get(name)
+  rescue
+    ArgumentError -> {nil, nil}
+  end
+
+  defp maybe_fetch_token({_state, nil = _token}, name) do
     GenServer.call(registry_name(name), :fetch)
+  end
+
+  defp maybe_fetch_token({_state, token}, _) do
+    {:ok, token}
+  end
+
+  defp maybe_fetch_token(_, _) do
+    {:error, RuntimeError.exception("no token")}
   end
 
   @impl true
@@ -43,21 +63,22 @@ defmodule Goth.Server do
 
     case prefetch || :sync do
       :async ->
+        put(state, nil)
         {:ok, state, {:continue, :async_prefetch}}
 
       :sync ->
-        do_fetch(state)
+        do_prefetch(state)
         {:ok, state}
     end
   end
 
   @impl true
   def handle_continue(:async_prefetch, state) do
-    do_fetch(state)
+    do_prefetch(state)
     {:noreply, state}
   end
 
-  defp do_fetch(state) do
+  defp do_prefetch(state) do
     # given calculating JWT for each request is expensive, we do it once
     # on system boot to hopefully fill in the cache.
     case Token.fetch(state) do
@@ -71,31 +92,8 @@ defmodule Goth.Server do
   end
 
   @impl true
-  def handle_call(:fetch, _from, %{name: name} = state) do
-    reply =
-      name
-      |> maybe_get_cache()
-      |> maybe_fetch_token()
-
-    {:reply, reply, state}
-  end
-
-  defp maybe_get_cache(name) do
-    get(name)
-  rescue
-    ArgumentError -> {nil, nil}
-  end
-
-  defp maybe_fetch_token({nil = _state, nil = _token}) do
-    {:error, RuntimeError.exception("no token")}
-  end
-
-  defp maybe_fetch_token({state, nil = _token}) do
-    Token.fetch(state)
-  end
-
-  defp maybe_fetch_token({_state, token}) do
-    {:ok, token}
+  def handle_call(:fetch, _from, state) do
+    {:reply, Token.fetch(state), state}
   end
 
   defp start_http_client({module, opts}) do
