@@ -70,8 +70,7 @@ A simple library to generate and retrieve OAuth2 tokens for use with Google Clou
 3. Fetch the token:
 
     ```elixir
-    iex> {:ok, token} = Goth.fetch(MyApp.Goth)
-    iex> token
+    iex> Goth.fetch!(MyApp.Goth)
     %Goth.Token{
       expires: 1453356568,
       token: "ya29.cALlJ4ICWRvMkYB-WsAR-CZnExE459PA7QPqKg5nei9y2T9-iqmbcgxq8XrTATNn_BPim",

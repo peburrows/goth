@@ -152,9 +152,21 @@ defmodule Goth do
   To fetch the token bypassing the cache, see `Goth.Token.fetch/2`.
   """
   @doc since: "1.3.0"
-
   def fetch(name, timeout \\ 5000) do
     read_from_ets(name) || GenServer.call(registry_name(name), :fetch, timeout)
+  end
+
+  @doc """
+  Fetches the token, erroring if it is missing.
+
+  See `fetch/2` for more information.
+  """
+  @doc since: "1.3.0"
+  def fetch!(name, timeout \\ 5000) do
+    case fetch(name, timeout) do
+      {:ok, token} -> token
+      {:error, exception} -> raise exception
+    end
   end
 
   defstruct [
