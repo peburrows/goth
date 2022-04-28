@@ -80,6 +80,9 @@ defmodule Goth.Token do
 
     * `:url` - the URL of the metadata server, defaults to `"http://metadata.google.internal"`
 
+    * `:audience` - the audience you want an identity token for, default to `nil`
+      If this parameter is provided, an identity token is returned instead of an access token
+
   ## Examples
 
   #### Generate a token using a service account credentials file:
@@ -188,14 +191,36 @@ defmodule Goth.Token do
   end
 
   defp request(%{source: {:metadata, options}} = config) when is_list(options) do
-    account = Keyword.get(options, :account, "default")
-    url = Keyword.get(options, :url, "http://metadata.google.internal")
-    url = "#{url}/computeMetadata/v1/instance/service-accounts/#{account}/token"
+    {url, audience} = metadata_options(options)
     headers = [{"metadata-flavor", "Google"}]
+    response = Goth.HTTPClient.request(config.http_client, :get, url, headers, "", [])
 
-    Goth.HTTPClient.request(config.http_client, :get, url, headers, "", [])
-    |> handle_response()
+    case audience do
+      nil -> handle_response(response)
+      _ -> handle_jwt_response(response)
+    end
   end
+
+  defp metadata_options(options) do
+    account = Keyword.get(options, :account, "default")
+    audience = Keyword.get(options, :audience, nil)
+    path = "/computeMetadata/v1/instance/service-accounts/"
+    base_url = Keyword.get(options, :url, "http://metadata.google.internal")
+
+    url =
+      case audience do
+        nil -> "#{base_url}#{path}#{account}/token"
+        audience -> "#{base_url}#{path}#{account}/identity?audience=#{audience}"
+      end
+
+    {url, audience}
+  end
+
+  defp handle_jwt_response({:ok, %{status: 200, body: body}}) do
+    {:ok, build_token(%{"id_token" => body})}
+  end
+
+  defp handle_jwt_response(response), do: handle_response(response)
 
   defp handle_response({:ok, %{status: 200, body: body}}) do
     case Jason.decode(body) do
