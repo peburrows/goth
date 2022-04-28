@@ -31,10 +31,8 @@ defmodule Goth.Server do
   defp read_from_ets(name) do
     case Registry.lookup(@registry, name) do
       [{_pid, %Token{} = token}] -> {:ok, token}
-      [] -> nil
+      _ -> nil
     end
-  rescue
-    ArgumentError -> nil
   end
 
   @impl true
