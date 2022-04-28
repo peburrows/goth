@@ -68,15 +68,16 @@ defmodule GothTest do
       Plug.Conn.resp(conn, 500, "oops")
     end)
 
-    Goth.Server.start_link(
-      name: test,
-      source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
-      http_client: {Goth.HTTPClient.Hackney, []},
-      max_retries: 3,
-      backoff_type: :rand,
-      backoff_min: 1,
-      backoff_max: 1_000
-    )
+    {:ok, _} =
+      Goth.start_link(
+        name: test,
+        source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
+        http_client: {Goth.HTTPClient.Hackney, []},
+        max_retries: 3,
+        backoff_type: :rand,
+        backoff_min: 1,
+        backoff_max: 1_000
+      )
 
     # higher timeouts since calculating JWT is expensive
     assert_receive :pong, 1000
@@ -98,15 +99,16 @@ defmodule GothTest do
       Plug.Conn.resp(conn, 500, "oops")
     end)
 
-    Goth.Server.start_link(
-      name: test,
-      source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
-      http_client: {Goth.HTTPClient.Hackney, []},
-      max_retries: 3,
-      backoff_type: :exp,
-      backoff_min: 1,
-      backoff_max: 1_000
-    )
+    {:ok, _} =
+      Goth.start_link(
+        name: test,
+        source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
+        http_client: {Goth.HTTPClient.Hackney, []},
+        max_retries: 3,
+        backoff_type: :exp,
+        backoff_min: 1,
+        backoff_max: 1_000
+      )
 
     # higher timeouts since calculating JWT is expensive
     assert_receive :pong, 1000
@@ -128,15 +130,16 @@ defmodule GothTest do
       Plug.Conn.resp(conn, 500, "oops")
     end)
 
-    Goth.Server.start_link(
-      name: test,
-      source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
-      http_client: {Goth.HTTPClient.Hackney, []},
-      max_retries: 3,
-      backoff_type: :rand_exp,
-      backoff_min: 1,
-      backoff_max: 1_000
-    )
+    {:ok, _} =
+      Goth.start_link(
+        name: test,
+        source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
+        http_client: {Goth.HTTPClient.Hackney, []},
+        max_retries: 3,
+        backoff_type: :rand_exp,
+        backoff_min: 1,
+        backoff_max: 1_000
+      )
 
     # higher timeouts since calculating JWT is expensive
     assert_receive :pong, 1000
