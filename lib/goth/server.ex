@@ -21,33 +21,24 @@ defmodule Goth.Server do
 
   def start_link(opts) do
     name = Keyword.fetch!(opts, :name)
-    GenServer.start_link(__MODULE__, opts, name: {:via, Registry, {@registry, name}})
+    GenServer.start_link(__MODULE__, opts, name: registry_name(name))
   end
 
-  def fetch(server) do
-    {config, token} =
-      try do
-        get(server)
-      rescue
-        ArgumentError ->
-          {nil, nil}
-      end
+  def fetch(name, timeout \\ 5000) do
+    read_from_ets(name) || GenServer.call(registry_name(name), :fetch, timeout)
+  end
 
-    cond do
-      token ->
-        {:ok, token}
-
-      config == nil ->
-        {:error, RuntimeError.exception("no token")}
-
-      true ->
-        Token.fetch(config)
+  defp read_from_ets(name) do
+    case Registry.lookup(@registry, name) do
+      [{_pid, %Token{} = token}] -> {:ok, token}
+      _ -> nil
     end
   end
 
   @impl true
   def init(opts) when is_list(opts) do
     {backoff_opts, opts} = Keyword.split(opts, [:backoff_type, :backoff_min, :backoff_max])
+    {prefetch, opts} = Keyword.pop(opts, :prefetch, :async)
 
     state = struct!(__MODULE__, opts)
 
@@ -57,6 +48,23 @@ defmodule Goth.Server do
       |> Map.replace!(:backoff, Backoff.new(backoff_opts))
       |> Map.replace!(:retries, state.max_retries)
 
+    case prefetch do
+      :async ->
+        {:ok, state, {:continue, :async_prefetch}}
+
+      :sync ->
+        prefetch(state)
+        {:ok, state}
+    end
+  end
+
+  @impl true
+  def handle_continue(:async_prefetch, state) do
+    prefetch(state)
+    {:noreply, state}
+  end
+
+  defp prefetch(state) do
     # given calculating JWT for each request is expensive, we do it once
     # on system boot to hopefully fill in the cache.
     case Token.fetch(state) do
@@ -64,11 +72,21 @@ defmodule Goth.Server do
         store_and_schedule_refresh(state, token)
 
       {:error, _} ->
-        put(state, nil)
         send(self(), :refresh)
     end
+  end
 
-    {:ok, state}
+  @impl true
+  def handle_call(:fetch, _from, state) do
+    reply = read_from_ets(state.name) || fetch_and_schedule_refresh(state)
+    {:reply, reply, state}
+  end
+
+  defp fetch_and_schedule_refresh(state) do
+    with {:ok, token} <- Token.fetch(state) do
+      store_and_schedule_refresh(state, token)
+      {:ok, token}
+    end
   end
 
   defp start_http_client({module, opts}) do
@@ -102,18 +120,16 @@ defmodule Goth.Server do
   end
 
   defp store_and_schedule_refresh(state, token) do
-    put(state, token)
+    put(state.name, token)
     time_in_seconds = max(token.expires - System.system_time(:second) - state.refresh_before, 0)
     Process.send_after(self(), :refresh, time_in_seconds * 1000)
   end
 
-  defp get(name) do
-    [{_pid, data}] = Registry.lookup(@registry, name)
-    data
+  defp put(name, token) do
+    Registry.update_value(@registry, name, fn _ -> token end)
   end
 
-  defp put(state, token) do
-    config = Map.take(state, [:source, :http_client])
-    Registry.update_value(@registry, state.name, fn _ -> {config, token} end)
+  defp registry_name(name) do
+    {:via, Registry, {@registry, name}}
   end
 end

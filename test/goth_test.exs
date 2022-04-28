@@ -26,6 +26,37 @@ defmodule GothTest do
     {:ok, ^token} = Goth.fetch(test)
   end
 
+  test "sync prefetch", %{test: test} do
+    now = System.system_time(:second)
+    bypass = Bypass.open()
+    pid = self()
+
+    Bypass.expect(bypass, fn conn ->
+      send(pid, :pong)
+      body = ~s|{"access_token":"dummy","expires_in":3599,"token_type":"Bearer"}|
+      Plug.Conn.resp(conn, 200, body)
+    end)
+
+    config = [
+      name: test,
+      source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
+      prefetch: :sync
+    ]
+
+    start_supervised!({Goth, config})
+
+    # higher timeouts since calculating JWT is expensive
+    assert_receive :pong, 1000
+
+    {:ok, token} = Goth.fetch(test)
+    assert token.token == "dummy"
+    assert token.type == "Bearer"
+    assert_in_delta token.expires, now + 3599, 1
+
+    Bypass.down(bypass)
+    {:ok, ^token} = Goth.fetch(test)
+  end
+
   @tag :capture_log
   test "retries with rand backoff", %{test: test} do
     Process.flag(:trap_exit, true)

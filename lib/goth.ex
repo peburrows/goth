@@ -9,12 +9,16 @@ defmodule Goth do
   @doc """
   Fetches the token.
 
-  If the token is not in the cache, we immediately request it.
+  If the token is not in the cache, we send a message to the given
+  GenServer to immediately request it.
 
-  To fetch the token bypassing the cache, see `Goth.Token.fetch/1`.
+  It also allows to pass the timeout that we should use when calling
+  the GenServer.
+
+  To fetch the token bypassing the cache, see `Goth.Token.fetch/2`.
   """
   @doc since: "1.3.0"
-  defdelegate fetch(server), to: Goth.Server
+  defdelegate fetch(server, timeout \\ 5000), to: Goth.Server
 
   @refresh_before_minutes 5
 
@@ -49,6 +53,9 @@ defmodule Goth do
 
     * `:backoff_type` - the backoff strategy, `:exp` for exponential, `:rand` for random and
       `:rand_exp` for random exponential (default: `:rand_exp`)
+
+    * `:prefetch` - the prefetch strategy, `:sync` to make the system boot with prefetch synchronous;
+      `:async` to make the system boot with prefetch asynchronous.
 
   ## Examples
 
