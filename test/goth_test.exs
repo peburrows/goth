@@ -57,6 +57,76 @@ defmodule GothTest do
     {:ok, ^token} = Goth.fetch(test)
   end
 
+  test "custom http client", %{test: test} do
+    now = System.system_time(:second)
+
+    config = [
+      name: test,
+      source: {:service_account, random_service_account_credentials(), []},
+      http_client: &http_client/1
+    ]
+
+    start_supervised!({Goth, config})
+
+    assert {:ok, token} = Goth.fetch(test)
+
+    assert token.token == "dummy"
+    assert token.type == "Bearer"
+    assert_in_delta token.expires, now + 3599, 1
+
+    assert {:ok, ^token} = Goth.fetch(test)
+  end
+
+  test "custom http client with options", %{test: test} do
+    now = System.system_time(:second)
+
+    config = [
+      name: test,
+      source: {:service_account, random_service_account_credentials(), []},
+      http_client: {&http_client_with_options/1, [test: test]}
+    ]
+
+    start_supervised!({Goth, config})
+
+    assert {:ok, token} = Goth.fetch(test)
+
+    assert token.token == "dummy"
+    assert token.type == "Bearer"
+    assert_in_delta token.expires, now + 3599, 1
+
+    assert {:ok, ^token} = Goth.fetch(test)
+  end
+
+  @tag :capture_log
+  test "http client with old implementation", %{test: test} do
+    now = System.system_time(:second)
+    bypass = Bypass.open()
+
+    Bypass.expect(bypass, fn conn ->
+      body = ~s|{"access_token":"dummy","expires_in":3599,"token_type":"Bearer"}|
+      Plug.Conn.resp(conn, 200, body)
+    end)
+
+    config = [
+      name: test,
+      source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
+      http_client: {Goth.HTTPClient.Hackney, []}
+    ]
+
+    assert ExUnit.CaptureLog.capture_log(fn ->
+             start_supervised!({Goth, config})
+           end) =~ "Setting http_client: {mod, opts} is deprecated in favour of http_client: &fun/1 | {&fun/1, opts}"
+
+    assert {:ok, token} = Goth.fetch(test)
+
+    assert token.token == "dummy"
+    assert token.type == "Bearer"
+    assert_in_delta token.expires, now + 3599, 1
+
+    Bypass.down(bypass)
+    assert {:ok, ^token} = Goth.fetch(test)
+  end
+
   @tag :capture_log
   test "retries with rand backoff", %{test: test} do
     Process.flag(:trap_exit, true)
@@ -72,7 +142,7 @@ defmodule GothTest do
       Goth.start_link(
         name: test,
         source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
-        http_client: {Goth.HTTPClient.Hackney, []},
+        http_client: {&Goth.__hackney__/1, []},
         max_retries: 3,
         backoff_type: :rand,
         backoff_min: 1,
@@ -103,7 +173,7 @@ defmodule GothTest do
       Goth.start_link(
         name: test,
         source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
-        http_client: {Goth.HTTPClient.Hackney, []},
+        http_client: {&Goth.__hackney__/1, []},
         max_retries: 3,
         backoff_type: :exp,
         backoff_min: 1,
@@ -134,7 +204,7 @@ defmodule GothTest do
       Goth.start_link(
         name: test,
         source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
-        http_client: {Goth.HTTPClient.Hackney, []},
+        http_client: {&Goth.__hackney__/1, []},
         max_retries: 3,
         backoff_type: :rand_exp,
         backoff_min: 1,
@@ -186,5 +256,37 @@ defmodule GothTest do
     private_key = :public_key.generate_key({:rsa, 2048, 65_537})
     {:ok, private_key}
     :public_key.pem_encode([:public_key.pem_entry_encode(:RSAPrivateKey, private_key)])
+  end
+
+  defp http_client(options) do
+    validate_options(options)
+
+    {:ok,
+     %{
+       status: 200,
+       body: ~s|{"access_token":"dummy","expires_in":3599,"token_type":"Bearer"}|
+     }}
+  end
+
+  defp http_client_with_options(options) do
+    validate_options(options)
+
+    assert Keyword.has_key?(options, :test)
+    assert options[:test] === :"test custom http client with options"
+
+    {:ok,
+     %{
+       status: 200,
+       body: ~s|{"access_token":"dummy","expires_in":3599,"token_type":"Bearer"}|
+     }}
+  end
+
+  defp validate_options(options) do
+    assert Keyword.keyword?(options)
+
+    assert Keyword.has_key?(options, :method)
+    assert Keyword.has_key?(options, :url)
+    assert Keyword.has_key?(options, :headers)
+    assert Keyword.has_key?(options, :body)
   end
 end

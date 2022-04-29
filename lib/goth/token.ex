@@ -32,8 +32,8 @@ defmodule Goth.Token do
 
     * `:source` - See "Source" section below.
 
-    * `:http_client` - HTTP client configuration, defaults to using `Goth.HTTPClient.Hackney`.
-      See `Goth.HTTPClient` for more information.
+    * `:http_client` - HTTP client configuration, defaults to using `{&Goth.__hackney__/1, []}`.
+      See `Goth` for more information.
 
   ## Source
 
@@ -130,10 +130,7 @@ defmodule Goth.Token do
   @doc since: "1.3.0"
   @spec fetch(map()) :: {:ok, t()} | {:error, Exception.t()}
   def fetch(config) when is_map(config) do
-    config =
-      Map.put_new_lazy(config, :http_client, fn ->
-        Goth.HTTPClient.init({Goth.HTTPClient.Hackney, []})
-      end)
+    config = Map.put_new_lazy(config, :http_client, fn -> {&Goth.__hackney__/1, []} end)
 
     request(config)
   end
@@ -157,7 +154,7 @@ defmodule Goth.Token do
     grant_type = "urn:ietf:params:oauth:grant-type:jwt-bearer"
     body = "grant_type=#{grant_type}&assertion=#{jwt}"
 
-    response = Goth.HTTPClient.request(config.http_client, :post, url, headers, body, [])
+    response = request(config.http_client, :post, url, headers, body, [])
 
     case handle_response(response) do
       {:ok, token} ->
@@ -186,14 +183,14 @@ defmodule Goth.Token do
         client_secret: client_secret
       )
 
-    Goth.HTTPClient.request(config.http_client, :post, url, headers, body, [])
-    |> handle_response()
+    response = request(config.http_client, :post, url, headers, body, [])
+    handle_response(response)
   end
 
   defp request(%{source: {:metadata, options}} = config) when is_list(options) do
     {url, audience} = metadata_options(options)
     headers = [{"metadata-flavor", "Google"}]
-    response = Goth.HTTPClient.request(config.http_client, :get, url, headers, "", [])
+    response = request(config.http_client, :get, url, headers, "", [])
 
     case audience do
       nil -> handle_response(response)
@@ -280,6 +277,21 @@ defmodule Goth.Token do
       scope: fields["aud"],
       sub: fields["sub"]
     }
+  end
+
+  defp request({mod, _} = config, method, url, headers, body, opts) when is_atom(mod) do
+    Goth.HTTPClient.request(config, method, url, headers, body, opts)
+  end
+
+  defp request({func, initial_state}, method, url, headers, body, options) do
+    request_options = [method: method, url: url, headers: headers, body: body]
+
+    opts =
+      initial_state
+      |> Keyword.merge(options)
+      |> Keyword.merge(request_options)
+
+    func.(opts)
   end
 
   # Everything below is deprecated.
