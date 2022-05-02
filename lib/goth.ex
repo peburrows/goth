@@ -89,23 +89,29 @@ defmodule Goth do
   end
 
   defmacrop ensure_hackney do
-    unless Code.ensure_loaded?(:hackney) do
-      Logger.error("""
-      Could not find hackney dependency.
+    if Code.ensure_loaded?(:hackney) do
+      :ok
+    else
+      quote do
+        unless Code.ensure_loaded?(:hackney) do
+          Logger.error("""
+          Could not find hackney dependency.
 
-      Please add :hackney to your dependencies:
+          Please add :hackney to your dependencies:
 
-          {:hackney, "~> 1.17"}
+              {:hackney, "~> 1.17"}
 
-      Or use a different HTTP client. See Goth for more information.
-      """)
+          Or use a different HTTP client. See Goth for more information.
+          """)
 
-      raise "missing hackney dependency"
+          raise "missing hackney dependency"
+        end
+
+        {:ok, _} = Application.ensure_all_started(:hackney)
+
+        :ok
+      end
     end
-
-    {:ok, _} = Application.ensure_all_started(:hackney)
-
-    :ok
   end
 
   @doc false
