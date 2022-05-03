@@ -1,14 +1,5 @@
 defmodule Goth.HTTPClient.Hackney do
-  @moduledoc """
-  Hackney-based HTTP client adapter.
-
-  ## Options
-
-    * `:default_opts` - default options passed down to Hackney, see `:hackney.request/5` for
-      more information.
-
-  """
-
+  @moduledoc false
   @behaviour Goth.HTTPClient
 
   defstruct default_opts: []

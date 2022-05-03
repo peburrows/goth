@@ -32,7 +32,21 @@ defmodule Goth.Token do
 
     * `:source` - See "Source" section below.
 
-    * `:http_client` - See "HTTP Client" section below.
+    * `:http_client` - a funtion that makes the HTTP request.
+
+      Can be one of the following:
+
+        * `fun` - same as `{fun, []}`
+
+        * `{fun, opts}` - `fun` must be a 1-arity funtion that receives a keyword list with fields
+          `:method`, `:url`, `:headers`, and `:body` along with any passed `opts`. The funtion must return
+          `{:ok, %{status: status, headers: headers, body: body}}` or `{:error, exception}`.
+          See "Custom HTTP Client" section below for more information.
+
+      `fun` can also be an atom `:hackney` to use the built-in [Hackney](http://github.com/benoitc/hackney)-based
+      client.
+
+      Defaults to `{:hackney, []}`.
 
   ## Source
 
@@ -82,50 +96,39 @@ defmodule Goth.Token do
     * `:audience` - the audience you want an identity token for, default to `nil`
       If this parameter is provided, an identity token is returned instead of an access token
 
-  ## HTTP Client
+  ## Custom HTTP Client
 
-  We added the possibility to pass a function reference with arity one,
-  or a tuple with the first element from the tuple is a function with arity one and the
-  second element is a keyword list which will be merged with the request options (see "Request Options").
+  To use a custom HTTP client, define a function that receives a keyword list with fields
+  `:method`, `:url`, `:headers`, and `:body`. The funtion must return
+  `{:ok, %{status: status, headers: headers, body: body}}` or `{:error, exception}`.
 
-      defmodule MyApp.HTTPClient do
-        def request(options) do
+  Here's an example with Hackney:
+
+      defmodule MyApp do
+        def request_with_hackney(options) do
           {method, options} = Keyword.pop!(options, :method)
           {url, options} = Keyword.pop!(options, :url)
           {headers, options} = Keyword.pop!(options, :headers)
-          {body, _options} = Keyword.pop!(options, :body)
+          {body, options} = Keyword.pop!(options, :body)
+          options = [:with_body] ++ options
 
-          do_request(method, url, headers, body)
+          case :hackney.request(method, url, headers, body, options) do
+            {:ok, status, headers, response_body} ->
+              {:ok, %{status: status, headers: headers, body: response_body}}
+
+            {:error, reason} ->
+              {:error, RuntimeError.exception(inspect(reason))}
+          end
         end
       end
 
-  ### Request Options
+  And here is how it can be used:
 
-  The request options have 4 keys that will be always present:
+      iex> Goth.Token.fetch(%{source: source, http_client: &MyApp.request_with_hackney/1})
+      {:ok, %Goth.Token{...}}
 
-    * `:method` - The HTTP method to be used, as `atom`.
-
-    * `:url` - The full URL to be requested as `String`.
-
-    * `:headers` - The list of tuples with format `[{String.t(), String.t()}, ...]`.
-
-    * `:body` - The request body to be used, as `String`.
-
-  If we use the module above to configure our client, `Goth.Token` will make
-  the following call:
-
-      # {&MyApp.HTTPClient.request/1, [timeout: 30_000]}
-      iex> {fun, extra_options} = config.http_client
-      iex> request_options = [
-      ...>   method: :post,
-      ...>   url: "https://google.com/...",
-      ...>   headers: [{"Content-Type", "application/x-www-form-urlencoded"}],
-      ...>   body: "grant_type=foo&assertion=bar"
-      ...> ]
-      iex> fun.(request_options ++ extra_options)
-
-  This new interface is intended to allow users to use only a function reference to their
-  application, removing the obligation to implement the behavior.
+      iex> Goth.Token.fetch(%{source: source, http_client: {&MyApp.request_with_hackney/1, connect_timeout: 5000}})
+      {:ok, %Goth.Token{...}}
 
   ## Examples
 
@@ -172,15 +175,9 @@ defmodule Goth.Token do
   for more information on metadata server.
 
 
-  #### Using a custom HTTP Client:
+  #### Passing custom Hackney options
 
-      iex> http_request = fn options ->
-      ...>   req = Req.build(options[:method], options[:url], options)
-      ...>   req = Req.put_default_steps(req)
-      ...>   Req.run(req)
-      ...> end
-      iex> credentials = "credentials.json" |> File.read!() |> Jason.decode!()
-      iex> Goth.Token.fetch(%{http_client: &http_request/1, source: {:service_account, credentials, []}})
+      iex> Goth.Token.fetch(%{source: source, http_client: {:hackney, connect_timeout: 5000}})
       {:ok, %Goth.Token{...}}
 
   """

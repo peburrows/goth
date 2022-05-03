@@ -1,13 +1,5 @@
 defmodule Goth.HTTPClient do
-  @moduledoc """
-  Specification for a Goth HTTP client.
-
-  The client is configured as a `{module, initial_state}` tuple where the module
-  implements this behaviour and `initial_state` is returned by the `c:init/1`
-  callback.
-
-  The `c:init/1` callback gives an opportunity to perform some initialization tasks just once.
-  """
+  @moduledoc false
 
   @type method() :: atom()
 

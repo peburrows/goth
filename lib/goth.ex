@@ -35,6 +35,12 @@ defmodule Goth do
       refreshed. Defaults to `3_300_000` (55 minutes; 5 minutes before the token, which
       is valid for 1h, expires)
 
+    * `:http_client` - a function that makes the HTTP request. Defaults to using built-in
+      integration with [Hackney](https://github.com/benoitc/hackney)
+
+      See documentation for the `:http_client` option in `Goth.Token.fetch/1` for
+      more information.
+
     * `:http_client` - a funtion that makes the HTTP request. Can be one of the following:
 
       * `fun` - same as `{fun, []}`
