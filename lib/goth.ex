@@ -41,20 +41,6 @@ defmodule Goth do
       See documentation for the `:http_client` option in `Goth.Token.fetch/1` for
       more information.
 
-    * `:http_client` - a funtion that makes the HTTP request. Can be one of the following:
-
-      * `fun` - same as `{fun, []}`
-
-      * `{fun, opts}` - `fun` must be a 1-arity funtion that receives a keyword list with fields
-        `:method`, `:url`, `:headers`, and `:body` along with any passed `opts`. The funtion must return
-        `{:ok, %{status: status, headers: headers, body: body}}` or `{:error, exception}`.
-        Example: `{&HTTPClient.request/1, connect_timeout: 5000}`.
-
-      `fun` can also be an atom `:hackney` to use the built-in [Hackney](http://github.com/benoitc/hackney)-based
-      client.
-
-      Defaults to `{:hackney, []}`
-
     * `:prefetch` - how to prefetch the token when the server starts. The possible options
       are `:async` to do it asynchronously or `:sync` to do it synchronously
       (that is, the server doesn't start until an attempt to fetch the token was made). Defaults
