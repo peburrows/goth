@@ -1,10 +1,9 @@
 defmodule Goth do
   @external_resource "README.md"
 
-  @moduledoc "README.md"
-             |> File.read!()
-             |> String.split("<!-- MDOC !-->")
-             |> Enum.fetch!(1)
+  @moduledoc """
+  A Goth token server.
+  """
 
   use GenServer
 
@@ -50,6 +49,11 @@ defmodule Goth do
 
       Defaults to `{:hackney, []}`
 
+    * `:prefetch` - how to prefetch the token when the server starts. The possible options
+      are `:async` to do it asynchronously or `:sync` to do it synchronously
+      (that is, the server doesn't start until an attempt to fetch the token was made). Defaults
+      to `:async`.
+
     * `:max_retries` - the maximum number of retries (default: `20`)
 
     * `:backoff_min` - the minimum backoff interval (default: `1_000`)
@@ -59,30 +63,27 @@ defmodule Goth do
     * `:backoff_type` - the backoff strategy, `:exp` for exponential, `:rand` for random and
       `:rand_exp` for random exponential (default: `:rand_exp`)
 
-    * `:prefetch` - the prefetch strategy, `:sync` to make the system boot with prefetch synchronous;
-      `:async` to make the system boot with prefetch asynchronous.
-
   ## Examples
 
   Generate a token using a service account credentials file:
 
       iex> credentials = "credentials.json" |> File.read!() |> Jason.decode!()
-      iex> Goth.start_link(name: MyApp.Goth, source: {:service_account, credentials, []})
-      iex> Goth.fetch(MyApp.Goth)
-      {:ok, %Goth.Token{...}}
+      iex> {:ok, _} = Goth.start_link(name: MyApp.Goth, source: {:service_account, credentials, []})
+      iex> Goth.fetch!(MyApp.Goth)
+      %Goth.Token{...}
 
   Retrieve the token using a refresh token:
 
       iex> credentials = "credentials.json" |> File.read!() |> Jason.decode!()
-      iex> Goth.start_link(name: MyApp.Goth, source: {:refresh_token, credentials, []})
-      iex> Goth.fetch(MyApp.Goth)
-      {:ok, %Goth.Token{...}}
+      iex> {:ok, _} = Goth.start_link(name: MyApp.Goth, source: {:refresh_token, credentials, []})
+      iex> Goth.fetch!(MyApp.Goth)
+      %Goth.Token{...}
 
   Retrieve the token using the Google metadata server:
 
-      iex> Goth.start_link(name: MyApp.Goth, source: {:metadata, []})
-      iex> Goth.fetch(MyApp.Goth)
-      {:ok, %Goth.Token{...}}
+      iex> {:ok, _} = Goth.start_link(name: MyApp.Goth, source: {:metadata, []})
+      iex> Goth.fetch!(MyApp.Goth)
+      %Goth.Token{...}
 
   """
   @doc since: "1.3.0"
@@ -141,15 +142,13 @@ defmodule Goth do
   end
 
   @doc """
-  Fetches the token.
+  Fetches the token from the cache.
 
-  If the token is not in the cache, we send a message to the given
-  GenServer to immediately request it.
+  If the token is not in the cache, this function blocks for `timeout`
+  milliseconds (defaults to `5000`) while it is attempted to be
+  fetched in the background.
 
-  It also allows to pass the timeout that we should use when calling
-  the GenServer.
-
-  To fetch the token bypassing the cache, see `Goth.Token.fetch/2`.
+  To fetch the token bypassing the cache, see `Goth.Token.fetch/1`.
   """
   @doc since: "1.3.0"
   def fetch(name, timeout \\ 5000) do

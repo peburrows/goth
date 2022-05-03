@@ -14,7 +14,11 @@ defmodule Goth.Mixfile do
       source_url: @source_url,
       name: "Goth",
       description: description(),
-      docs: [source_ref: "v#{@version}", main: "readme", extras: ["README.md"]],
+      docs: [
+        source_ref: "v#{@version}",
+        main: "readme",
+        extras: ["README.md", "CHANGELOG.md", "UPGRADE_GUIDE.md"]
+      ],
       deps: deps()
     ]
   end
