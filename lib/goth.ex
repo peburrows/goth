@@ -137,8 +137,8 @@ defmodule Goth do
   Fetches the token from the cache.
 
   If the token is not in the cache, this function blocks for `timeout`
-  milliseconds (defaults to `5000`) while it is attempted to be
-  fetched in the background.
+  milliseconds (defaults to `5000`) while it is attempted to fetch
+  it in the background.
 
   To fetch the token bypassing the cache, see `Goth.Token.fetch/1`.
   """
