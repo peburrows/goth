@@ -84,10 +84,7 @@ defmodule Goth.Token do
 
   ## HTTP Client
 
-  Currently, we still support the `mod | {mod, opts}` configuration, which makes the user
-  to implement the `Goth.HTTPClient` behaviour to use their own HTTP client.
-
-  But, to improve this API, we added the possibility to pass a function reference with arity one,
+  We added the possibility to pass a function reference with arity one,
   or a tuple with the first element from the tuple is a function with arity one and the
   second element is a keyword list which will be merged with the request options (see "Request Options").
 
