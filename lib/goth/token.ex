@@ -130,7 +130,7 @@ defmodule Goth.Token do
   @doc since: "1.3.0"
   @spec fetch(map()) :: {:ok, t()} | {:error, Exception.t()}
   def fetch(config) when is_map(config) do
-    config = Map.put_new_lazy(config, :http_client, fn -> {&Goth.__hackney__/1, []} end)
+    config = Map.put_new(config, :http_client, {&Goth.__hackney__/1, []})
 
     request(config)
   end

@@ -115,7 +115,7 @@ defmodule GothTest do
 
     assert ExUnit.CaptureLog.capture_log(fn ->
              start_supervised!({Goth, config})
-           end) =~ "Setting http_client: {mod, opts} is deprecated in favour of http_client: &fun/1 | {&fun/1, opts}"
+           end) =~ "Setting http_client: {mod, opts} is deprecated in favour of http_client: fun | {fun, opts}"
 
     assert {:ok, token} = Goth.fetch(test)
 
@@ -282,8 +282,6 @@ defmodule GothTest do
   end
 
   defp validate_options(options) do
-    assert Keyword.keyword?(options)
-
     assert Keyword.has_key?(options, :method)
     assert Keyword.has_key?(options, :url)
     assert Keyword.has_key?(options, :headers)

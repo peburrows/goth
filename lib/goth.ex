@@ -42,6 +42,20 @@ defmodule Goth do
       `:headers`, and `opts` merged into it, if available. And the function should return
       `{:ok, map} | {:error, exception}`. Defaults to `{&Goth.__hackney__/1, []}`.
 
+    * `:http_client` - a function that makes the HTTP request. Can be one of the following:
+
+      * `fun` - same as `{fun, []}`
+
+      * `{fun, opts}` - `fun` must be a 1-arity function that receives a keyword list with fields
+        `:method`, `:url`, `:headers`, and `:body` along with any passed `opts`. The function must return
+        `{:ok, %{status: status, headers: headers, body: body}}` or `{:error, exception}`.
+        Example: `{&HTTPClient.request/1, connect_timeout: 5000}`.
+
+        `fun` can also be an atom `:hackney` to use the built-in [Hackney](http://github.com/benoitc/hackney)-based
+        client.
+
+      Defaults to `{:hackney, []}`
+
     * `:max_retries` - the maximum number of retries (default: `20`)
 
     * `:backoff_min` - the minimum backoff interval (default: `1_000`)
@@ -82,7 +96,7 @@ defmodule Goth do
     opts =
       opts
       |> Keyword.put_new(:refresh_before, @refresh_before_minutes * 60)
-      |> Keyword.put_new(:http_client, {&__hackney__/1, []})
+      |> Keyword.put_new(:http_client, {:hackney, []})
 
     name = Keyword.fetch!(opts, :name)
     GenServer.start_link(__MODULE__, opts, name: registry_name(name))
@@ -114,7 +128,6 @@ defmodule Goth do
     end
   end
 
-  @doc false
   def __hackney__(options) do
     ensure_hackney()
 
@@ -222,6 +235,14 @@ defmodule Goth do
     end
   end
 
+  defp start_http_client(:hackney) do
+    {&__hackney__/1, []}
+  end
+
+  defp start_http_client({:hackney, opts}) do
+    {&__hackney__/1, opts}
+  end
+
   defp start_http_client(func) when is_function(func, 1) do
     {func, []}
   end
@@ -231,7 +252,7 @@ defmodule Goth do
   end
 
   defp start_http_client({module, _} = config) when is_atom(module) do
-    Logger.warn("Setting http_client: {mod, opts} is deprecated in favour of http_client: &fun/1 | {&fun/1, opts}")
+    Logger.warn("Setting http_client: {mod, opts} is deprecated in favour of http_client: fun | {fun, opts}")
 
     Goth.HTTPClient.init(config)
   end
