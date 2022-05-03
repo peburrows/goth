@@ -36,23 +36,17 @@ defmodule Goth do
       that it is tried to be automatically refreshed. Defaults to
       `#{@refresh_before_minutes * 60}` (#{@refresh_before_minutes} minutes).
 
-    * `:http_client` - a `{&fun/1, opts}` tuple or `&fun/1`, where `fun` is a
-      function reference with arity 1 and `opts` is a keywords list to initialize the client with.
-      The function will receive a keyword list with required fields: `:method`, `:url`, `:body` and
-      `:headers`, and `opts` merged into it, if available. And the function should return
-      `{:ok, map} | {:error, exception}`. Defaults to `{&Goth.__hackney__/1, []}`.
-
-    * `:http_client` - a function that makes the HTTP request. Can be one of the following:
+    * `:http_client` - a funtion that makes the HTTP request. Can be one of the following:
 
       * `fun` - same as `{fun, []}`
 
-      * `{fun, opts}` - `fun` must be a 1-arity function that receives a keyword list with fields
-        `:method`, `:url`, `:headers`, and `:body` along with any passed `opts`. The function must return
+      * `{fun, opts}` - `fun` must be a 1-arity funtion that receives a keyword list with fields
+        `:method`, `:url`, `:headers`, and `:body` along with any passed `opts`. The funtion must return
         `{:ok, %{status: status, headers: headers, body: body}}` or `{:error, exception}`.
         Example: `{&HTTPClient.request/1, connect_timeout: 5000}`.
 
-        `fun` can also be an atom `:hackney` to use the built-in [Hackney](http://github.com/benoitc/hackney)-based
-        client.
+      `fun` can also be an atom `:hackney` to use the built-in [Hackney](http://github.com/benoitc/hackney)-based
+      client.
 
       Defaults to `{:hackney, []}`
 
@@ -115,7 +109,7 @@ defmodule Goth do
 
               {:hackney, "~> 1.17"}
 
-          Or use a different HTTP client. See Goth for more information.
+          Or use a different HTTP client. See Goth.Token.fetch/1 documentation for more information.
           """)
 
           raise "missing hackney dependency"
@@ -243,16 +237,16 @@ defmodule Goth do
     {&__hackney__/1, opts}
   end
 
-  defp start_http_client(func) when is_function(func, 1) do
-    {func, []}
+  defp start_http_client(fun) when is_function(fun, 1) do
+    {fun, []}
   end
 
-  defp start_http_client({func, opts}) when is_function(func, 1) do
-    {func, opts}
+  defp start_http_client({fun, opts}) when is_function(fun, 1) do
+    {fun, opts}
   end
 
   defp start_http_client({module, _} = config) when is_atom(module) do
-    Logger.warn("Setting http_client: {mod, opts} is deprecated in favour of http_client: fun | {fun, opts}")
+    Logger.warn("Setting http_client: mod | {mod, opts} is deprecated in favour of http_client: fun | {fun, opts}")
 
     Goth.HTTPClient.init(config)
   end
