@@ -32,8 +32,7 @@ defmodule Goth.Token do
 
     * `:source` - See "Source" section below.
 
-    * `:http_client` - HTTP client configuration, defaults to using `Goth.HTTPClient.Hackney`.
-      See `Goth.HTTPClient` for more information.
+    * `:http_client` - See "HTTP Client" section below.
 
   ## Source
 
@@ -83,6 +82,51 @@ defmodule Goth.Token do
     * `:audience` - the audience you want an identity token for, default to `nil`
       If this parameter is provided, an identity token is returned instead of an access token
 
+  ## HTTP Client
+
+  We added the possibility to pass a function reference with arity one,
+  or a tuple with the first element from the tuple is a function with arity one and the
+  second element is a keyword list which will be merged with the request options (see "Request Options").
+
+      defmodule MyApp.HTTPClient do
+        def request(options) do
+          {method, options} = Keyword.pop!(options, :method)
+          {url, options} = Keyword.pop!(options, :url)
+          {headers, options} = Keyword.pop!(options, :headers)
+          {body, _options} = Keyword.pop!(options, :body)
+
+          do_request(method, url, headers, body)
+        end
+      end
+
+  ### Request Options
+
+  The request options have 4 keys that will be always present:
+
+    * `:method` - The HTTP method to be used, as `atom`.
+
+    * `:url` - The full URL to be requested as `String`.
+
+    * `:headers` - The list of tuples with format `[{String.t(), String.t()}, ...]`.
+
+    * `:body` - The request body to be used, as `String`.
+
+  If we use the module above to configure our client, `Goth.Token` will make
+  the following call:
+
+      # {&MyApp.HTTPClient.request/1, [timeout: 30_000]}
+      iex> {fun, extra_options} = config.http_client
+      iex> request_options = [
+      ...>   method: :post,
+      ...>   url: "https://google.com/...",
+      ...>   headers: [{"Content-Type", "application/x-www-form-urlencoded"}],
+      ...>   body: "grant_type=foo&assertion=bar"
+      ...> ]
+      iex> fun.(request_options ++ extra_options)
+
+  This new interface is intended to allow users to use only a function reference to their
+  application, removing the obligation to implement the behavior.
+
   ## Examples
 
   #### Generate a token using a service account credentials file:
@@ -126,14 +170,24 @@ defmodule Goth.Token do
 
   See [Storing and retrieving instance metadata](https://cloud.google.com/compute/docs/storing-retrieving-metadata)
   for more information on metadata server.
+
+
+  #### Using a custom HTTP Client:
+
+      iex> http_request = fn options ->
+      ...>   req = Req.build(options[:method], options[:url], options)
+      ...>   req = Req.put_default_steps(req)
+      ...>   Req.run(req)
+      ...> end
+      iex> credentials = "credentials.json" |> File.read!() |> Jason.decode!()
+      iex> Goth.Token.fetch(%{http_client: &http_request/1, source: {:service_account, credentials, []}})
+      {:ok, %Goth.Token{...}}
+
   """
   @doc since: "1.3.0"
   @spec fetch(map()) :: {:ok, t()} | {:error, Exception.t()}
   def fetch(config) when is_map(config) do
-    config =
-      Map.put_new_lazy(config, :http_client, fn ->
-        Goth.HTTPClient.init({Goth.HTTPClient.Hackney, []})
-      end)
+    config = Map.put_new(config, :http_client, {:hackney, []})
 
     request(config)
   end
@@ -157,7 +211,7 @@ defmodule Goth.Token do
     grant_type = "urn:ietf:params:oauth:grant-type:jwt-bearer"
     body = "grant_type=#{grant_type}&assertion=#{jwt}"
 
-    response = Goth.HTTPClient.request(config.http_client, :post, url, headers, body, [])
+    response = request(config.http_client, method: :post, url: url, headers: headers, body: body)
 
     case handle_response(response) do
       {:ok, token} ->
@@ -186,14 +240,14 @@ defmodule Goth.Token do
         client_secret: client_secret
       )
 
-    Goth.HTTPClient.request(config.http_client, :post, url, headers, body, [])
-    |> handle_response()
+    response = request(config.http_client, method: :post, url: url, headers: headers, body: body)
+    handle_response(response)
   end
 
   defp request(%{source: {:metadata, options}} = config) when is_list(options) do
     {url, audience} = metadata_options(options)
     headers = [{"metadata-flavor", "Google"}]
-    response = Goth.HTTPClient.request(config.http_client, :get, url, headers, "", [])
+    response = request(config.http_client, method: :get, url: url, headers: headers, body: "")
 
     case audience do
       nil -> handle_response(response)
@@ -280,6 +334,18 @@ defmodule Goth.Token do
       scope: fields["aud"],
       sub: fields["sub"]
     }
+  end
+
+  defp request({:hackney, extra_options}, options) do
+    Goth.__hackney__(options ++ extra_options)
+  end
+
+  defp request({mod, _} = config, options) when is_atom(mod) do
+    Goth.HTTPClient.request(config, options[:method], options[:url], options[:headers], options[:body], [])
+  end
+
+  defp request({fun, extra_options}, options) when is_function(fun, 1) do
+    fun.(options ++ extra_options)
   end
 
   # Everything below is deprecated.

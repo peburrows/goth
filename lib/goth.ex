@@ -7,6 +7,9 @@ defmodule Goth do
              |> Enum.fetch!(1)
 
   use GenServer
+
+  require Logger
+
   alias Goth.Backoff
   alias Goth.Token
 
@@ -33,9 +36,19 @@ defmodule Goth do
       refreshed. Defaults to `3_300_000` (55 minutes; 5 minutes before the token, which
       is valid for 1h, expires)
 
-    * `:http_client` - a `{module, opts}` tuple, where `module` implements the
-      `Goth.HTTPClient` behaviour and `opts` is a keywords list to initialize the client with.
-      Defaults to `{Goth.HTTPClient.Hackney, []}`.
+    * `:http_client` - a funtion that makes the HTTP request. Can be one of the following:
+
+      * `fun` - same as `{fun, []}`
+
+      * `{fun, opts}` - `fun` must be a 1-arity funtion that receives a keyword list with fields
+        `:method`, `:url`, `:headers`, and `:body` along with any passed `opts`. The funtion must return
+        `{:ok, %{status: status, headers: headers, body: body}}` or `{:error, exception}`.
+        Example: `{&HTTPClient.request/1, connect_timeout: 5000}`.
+
+      `fun` can also be an atom `:hackney` to use the built-in [Hackney](http://github.com/benoitc/hackney)-based
+      client.
+
+      Defaults to `{:hackney, []}`
 
     * `:max_retries` - the maximum number of retries (default: `20`)
 
@@ -77,10 +90,54 @@ defmodule Goth do
     opts =
       opts
       |> Keyword.put_new(:refresh_after, @default_refresh_after)
-      |> Keyword.put_new(:http_client, {Goth.HTTPClient.Hackney, []})
+      |> Keyword.put_new(:http_client, {:hackney, []})
 
     name = Keyword.fetch!(opts, :name)
     GenServer.start_link(__MODULE__, opts, name: registry_name(name))
+  end
+
+  defmacrop ensure_hackney do
+    if Code.ensure_loaded?(:hackney) do
+      :ok
+    else
+      quote do
+        unless Code.ensure_loaded?(:hackney) do
+          Logger.error("""
+          Could not find hackney dependency.
+
+          Please add :hackney to your dependencies:
+
+              {:hackney, "~> 1.17"}
+
+          Or use a different HTTP client. See Goth.Token.fetch/1 documentation for more information.
+          """)
+
+          raise "missing hackney dependency"
+        end
+
+        {:ok, _} = Application.ensure_all_started(:hackney)
+
+        :ok
+      end
+    end
+  end
+
+  def __hackney__(options) do
+    ensure_hackney()
+
+    {method, options} = Keyword.pop!(options, :method)
+    {url, options} = Keyword.pop!(options, :url)
+    {headers, options} = Keyword.pop!(options, :headers)
+    {body, options} = Keyword.pop!(options, :body)
+    options = [:with_body] ++ options
+
+    case :hackney.request(method, url, headers, body, options) do
+      {:ok, status, headers, response_body} ->
+        {:ok, %{status: status, headers: headers, body: response_body}}
+
+      {:error, reason} ->
+        {:error, RuntimeError.exception(inspect(reason))}
+    end
   end
 
   @doc """
@@ -172,8 +229,26 @@ defmodule Goth do
     end
   end
 
-  defp start_http_client({module, opts}) do
-    Goth.HTTPClient.init({module, opts})
+  defp start_http_client(:hackney) do
+    {&__hackney__/1, []}
+  end
+
+  defp start_http_client({:hackney, opts}) do
+    {&__hackney__/1, opts}
+  end
+
+  defp start_http_client(fun) when is_function(fun, 1) do
+    {fun, []}
+  end
+
+  defp start_http_client({fun, opts}) when is_function(fun, 1) do
+    {fun, opts}
+  end
+
+  defp start_http_client({module, _} = config) when is_atom(module) do
+    Logger.warn("Setting http_client: mod | {mod, opts} is deprecated in favour of http_client: fun | {fun, opts}")
+
+    Goth.HTTPClient.init(config)
   end
 
   @impl true
