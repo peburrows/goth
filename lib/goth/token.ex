@@ -273,6 +273,10 @@ defmodule Goth.Token do
 
   defp handle_jwt_response(response), do: handle_response(response)
 
+  defp handle_response({:ok, %{status: 200, body: body}}) when is_map(body) do
+    {:ok, build_token(body)}
+  end
+
   defp handle_response({:ok, %{status: 200, body: body}}) do
     case Jason.decode(body) do
       {:ok, attrs} -> {:ok, build_token(attrs)}
