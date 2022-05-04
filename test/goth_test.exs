@@ -128,6 +128,27 @@ defmodule GothTest do
   end
 
   @tag :capture_log
+  test "http client with already decoded body", %{test: test} do
+    now = System.system_time(:second)
+
+    config = [
+      name: test,
+      source: {:service_account, random_service_account_credentials(), []},
+      http_client: &http_client_with_decoded_body/1
+    ]
+
+    start_supervised!({Goth, config})
+
+    assert {:ok, token} = Goth.fetch(test)
+
+    assert token.token == "dummy"
+    assert token.type == "Bearer"
+    assert_in_delta token.expires, now + 3599, 1
+
+    assert {:ok, ^token} = Goth.fetch(test)
+  end
+
+  @tag :capture_log
   test "retries with rand backoff", %{test: test} do
     Process.flag(:trap_exit, true)
     pid = self()
@@ -302,6 +323,16 @@ defmodule GothTest do
      %{
        status: 200,
        body: ~s|{"access_token":"dummy","expires_in":3599,"token_type":"Bearer"}|
+     }}
+  end
+
+  defp http_client_with_decoded_body(options) do
+    validate_options(options)
+
+    {:ok,
+     %{
+       status: 200,
+       body: %{"access_token" => "dummy", "expires_in" => 3599, "token_type" => "Bearer"}
      }}
   end
 
