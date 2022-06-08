@@ -43,6 +43,7 @@ defmodule Goth.Client do
 
   @doc false
   def get_access_token(source, info, opts \\ [])
+
   # Fetch an access token from Google's metadata service for applications running
   # on Google's Cloud platform.
   def get_access_token(type, scope, opts) when is_atom(type) and is_binary(scope) do
@@ -67,13 +68,8 @@ defmodule Goth.Client do
     endpoint = Application.get_env(:goth, :endpoint, "https://www.googleapis.com")
     url = "#{endpoint}/oauth2/v4/token"
 
-    body =
-      {:form,
-       [
-         grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-         assertion: jwt({account, scope}, opts)
-       ]}
-
+    grant_type = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+    body = "grant_type=#{grant_type}&assertion=#{jwt({account, scope}, opts)}"
     headers = [{"Content-Type", "application/x-www-form-urlencoded"}]
 
     request(:post, url, headers, body)
@@ -89,13 +85,12 @@ defmodule Goth.Client do
     url = "#{endpoint}/oauth2/v4/token"
 
     body =
-      {:form,
-       [
-         grant_type: "refresh_token",
-         refresh_token: refresh_token,
-         client_id: client_id,
-         client_secret: client_secret
-       ]}
+      URI.encode_query(
+        grant_type: "refresh_token",
+        refresh_token: refresh_token,
+        client_id: client_id,
+        client_secret: client_secret
+      )
 
     headers = [{"Content-Type", "application/x-www-form-urlencoded"}]
 
@@ -176,14 +171,14 @@ defmodule Goth.Client do
   end
 
   defp request(method, url, headers, body) do
-    client = {Goth.HTTPClient.Hackney, Goth.HTTPClient.Hackney.init([])}
+    client = {Goth.HTTPClient.Finch, Goth.HTTPClient.Finch.init([])}
     Goth.HTTPClient.request(client, method, url, headers, body, [])
   end
 
   defp request!(method, url, headers, body) do
     case request(method, url, headers, body) do
       {:ok, response} -> response
-      {:error, reason} -> raise RuntimeError.exception(inspect(reason))
+      {:error, exception} -> raise exception
     end
   end
 

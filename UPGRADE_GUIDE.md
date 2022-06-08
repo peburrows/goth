@@ -13,7 +13,7 @@ Change your `mix.exs`:
 def deps do
   [
     {:goth, "~> 1.3-rc"},
-    {:hackney, "~> 1.17"}
+    {:finch, "~> 0.9.0 or ~> 0.10.0 or ~> 0.11.0 or ~> 0.12.0"}
   ]
 end
 ```

@@ -218,7 +218,7 @@ defmodule Goth.Legacy.ClientTest do
 
   test "returns {:error, err} when HTTP call fails hard" do
     old_url = Application.get_env(:goth, :endpoint)
-    Application.put_env(:goth, :endpoint, "nnnnnopelkjlkj.nope")
+    Application.put_env(:goth, :endpoint, "https://nnnnnopelkjlkj.nope")
     assert {:error, _} = Client.get_access_token("my-scope")
     Application.put_env(:goth, :endpoint, old_url)
   end

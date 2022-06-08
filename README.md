@@ -12,14 +12,14 @@ A simple library to generate and retrieve OAuth2 tokens for use with Google Clou
 
 **Note:** below are instructions for using Goth v1.3+. For more information on earlier versions of Goth, [see v1.2.0 documentation on hexdocs.pm](https://hexdocs.pm/goth/1.2.0).
 
-1. Add `:goth` to your list of dependencies in `mix.exs`. To use the built-in, Hackney-based HTTP
-   client adapter, add `:hackney` too:
+1. Add `:goth` to your list of dependencies in `mix.exs`. To use the built-in, Finch-based HTTP
+   client adapter, add `:finch` too:
 
    ```elixir
    def deps do
      [
        {:goth, "~> 1.3-rc"},
-       {:hackney, "~> 1.17"}
+       {:finch, "~> 0.9.0 or ~> 0.10.0 or ~> 0.11.0 or ~> 0.12.0"}
      ]
    end
    ```
@@ -43,7 +43,7 @@ A simple library to generate and retrieve OAuth2 tokens for use with Google Clou
    end
    ```
 
-2.1. ...or use multiple credentials
+   ...or use multiple credentials:
 
    ```elixir
    defmodule MyApp.Application do
@@ -69,15 +69,15 @@ A simple library to generate and retrieve OAuth2 tokens for use with Google Clou
 
 3. Fetch the token:
 
-    ```elixir
-    iex> Goth.fetch!(MyApp.Goth)
-    %Goth.Token{
-      expires: 1453356568,
-      token: "ya29.cALlJ4ICWRvMkYB-WsAR-CZnExE459PA7QPqKg5nei9y2T9-iqmbcgxq8XrTATNn_BPim",
-      type: "Bearer",
-      ...
-    }
-    ```
+   ```elixir
+   iex> Goth.fetch!(MyApp.Goth)
+   %Goth.Token{
+     expires: 1453356568,
+     token: "ya29.cALlJ4ICWRvMkYB-WsAR-CZnExE459PA7QPqKg5nei9y2T9-iqmbcgxq8XrTATNn_BPim",
+     type: "Bearer",
+     ...
+   }
+   ```
 
 See `Goth.start_link/1` for more information about possible configuration options.
 
@@ -89,4 +89,4 @@ See [Upgrading from Goth 1.2](UPGRADE_GUIDE.md) guide for more information.
 
 ## Community resources
 
-  * [How to upload on YouTube Data API with elixir ?](https://mrdotb.com/posts/upload-on-youtube-with-elixir/)
+- [How to upload on YouTube Data API with elixir ?](https://mrdotb.com/posts/upload-on-youtube-with-elixir/)

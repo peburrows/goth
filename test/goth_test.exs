@@ -110,7 +110,7 @@ defmodule GothTest do
     config = [
       name: test,
       source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
-      http_client: {Goth.HTTPClient.Hackney, []}
+      http_client: {Goth.HTTPClient.Finch, []}
     ]
 
     assert ExUnit.CaptureLog.capture_log(fn ->
@@ -163,7 +163,7 @@ defmodule GothTest do
       Goth.start_link(
         name: test,
         source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
-        http_client: {&Goth.__hackney__/1, []},
+        http_client: {&Goth.__finch__/1, []},
         max_retries: 3,
         backoff_type: :rand,
         backoff_min: 1,
@@ -194,7 +194,7 @@ defmodule GothTest do
       Goth.start_link(
         name: test,
         source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
-        http_client: {&Goth.__hackney__/1, []},
+        http_client: {&Goth.__finch__/1, []},
         max_retries: 3,
         backoff_type: :exp,
         backoff_min: 1,
@@ -225,7 +225,7 @@ defmodule GothTest do
       Goth.start_link(
         name: test,
         source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
-        http_client: {&Goth.__hackney__/1, []},
+        http_client: {&Goth.__finch__/1, []},
         max_retries: 3,
         backoff_type: :rand_exp,
         backoff_min: 1,
