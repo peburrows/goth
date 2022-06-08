@@ -14,7 +14,7 @@ defmodule Goth do
 
   @registry Goth.Registry
   @max_retries 20
-  @default_refresh_after 3_300_000
+  @refresh_before_minutes 5
 
   @doc """
   Starts the server.
@@ -31,9 +31,9 @@ defmodule Goth do
       See documentation for the `:source` option in `Goth.Token.fetch/1` for
       more information.
 
-    * `:refresh_after` - Time in milliseconds after which the token will be automatically
-      refreshed. Defaults to `3_300_000` (55 minutes; 5 minutes before the token, which
-      is valid for 1h, expires)
+    * `:refresh_before` - Time in seconds before the token is about to expire
+      that it is tried to be automatically refreshed. Defaults to
+      `#{@refresh_before_minutes * 60}` (#{@refresh_before_minutes} minutes).
 
     * `:http_client` - a function that makes the HTTP request. Defaults to using built-in
       integration with [Hackney](https://github.com/benoitc/hackney)
@@ -82,7 +82,7 @@ defmodule Goth do
   def start_link(opts) do
     opts =
       opts
-      |> Keyword.put_new(:refresh_after, @default_refresh_after)
+      |> Keyword.put_new(:refresh_before, @refresh_before_minutes * 60)
       |> Keyword.put_new(:http_client, {:hackney, []})
 
     name = Keyword.fetch!(opts, :name)
@@ -166,7 +166,7 @@ defmodule Goth do
     :backoff,
     :http_client,
     :retry_after,
-    :refresh_after,
+    :refresh_before,
     max_retries: @max_retries,
     retries: @max_retries
   ]
@@ -282,7 +282,9 @@ defmodule Goth do
 
   defp store_and_schedule_refresh(state, token) do
     put(state.name, token)
-    Process.send_after(self(), :refresh, state.refresh_after)
+    time_in_seconds = max(token.expires - System.system_time(:second) - state.refresh_before, 0)
+
+    Process.send_after(self(), :refresh, time_in_seconds * 1000)
   end
 
   defp put(name, token) do

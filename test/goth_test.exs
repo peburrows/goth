@@ -241,36 +241,13 @@ defmodule GothTest do
                    1000
   end
 
-  test "refresh with default refresh_after", %{test: test} do
-    pid = self()
-    bypass = Bypass.open()
-
-    Bypass.expect(bypass, fn conn ->
-      send(pid, :pong)
-      body = ~s|{"access_token":"dummy","expires_in":3599,"token_type":"Bearer"}|
-      Plug.Conn.resp(conn, 200, body)
-    end)
-
-    config = [
-      name: test,
-      source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
-      max_retries: 0
-    ]
-
-    start_supervised!({Goth, config})
-
-    # we will only receive the message once
-    assert_receive :pong, 1000
-    refute_receive :pong, 1000
-  end
-
   test "refresh", %{test: test} do
     pid = self()
     bypass = Bypass.open()
 
     Bypass.expect(bypass, fn conn ->
       send(pid, :pong)
-      body = ~s|{"access_token":"dummy","expires_in":3599,"token_type":"Bearer"}|
+      body = ~s|{"access_token":#{System.unique_integer()},"expires_in":1,"token_type":"Bearer"}|
       Plug.Conn.resp(conn, 200, body)
     end)
 
@@ -278,7 +255,7 @@ defmodule GothTest do
       name: test,
       source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
       max_retries: 0,
-      refresh_after: 1
+      refresh_before: 1
     ]
 
     start_supervised!({Goth, config})
