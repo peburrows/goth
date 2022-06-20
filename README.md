@@ -18,8 +18,7 @@ A simple library to generate and retrieve OAuth2 tokens for use with Google Clou
    ```elixir
    def deps do
      [
-       {:goth, "~> 1.3-rc"},
-       {:finch, "~> 0.9"}
+       {:goth, "~> 1.3-rc"}
      ]
    end
    ```
