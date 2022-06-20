@@ -98,36 +98,6 @@ defmodule GothTest do
   end
 
   @tag :capture_log
-  test "http client with old implementation", %{test: test} do
-    now = System.system_time(:second)
-    bypass = Bypass.open()
-
-    Bypass.expect(bypass, fn conn ->
-      body = ~s|{"access_token":"dummy","expires_in":3599,"token_type":"Bearer"}|
-      Plug.Conn.resp(conn, 200, body)
-    end)
-
-    config = [
-      name: test,
-      source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
-      http_client: {Goth.HTTPClient.Finch, []}
-    ]
-
-    assert ExUnit.CaptureLog.capture_log(fn ->
-             start_supervised!({Goth, config})
-           end) =~ "Setting http_client: mod | {mod, opts} is deprecated in favour of http_client: fun | {fun, opts}"
-
-    assert {:ok, token} = Goth.fetch(test)
-
-    assert token.token == "dummy"
-    assert token.type == "Bearer"
-    assert_in_delta token.expires, now + 3599, 1
-
-    Bypass.down(bypass)
-    assert {:ok, ^token} = Goth.fetch(test)
-  end
-
-  @tag :capture_log
   test "http client with already decoded body", %{test: test} do
     now = System.system_time(:second)
 
@@ -163,7 +133,7 @@ defmodule GothTest do
       Goth.start_link(
         name: test,
         source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
-        http_client: {&Goth.__finch__/1, []},
+        http_client: {:finch, []},
         max_retries: 3,
         backoff_type: :rand,
         backoff_min: 1,
@@ -194,7 +164,7 @@ defmodule GothTest do
       Goth.start_link(
         name: test,
         source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
-        http_client: {&Goth.__finch__/1, []},
+        http_client: {:finch, []},
         max_retries: 3,
         backoff_type: :exp,
         backoff_min: 1,
@@ -225,7 +195,7 @@ defmodule GothTest do
       Goth.start_link(
         name: test,
         source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
-        http_client: {&Goth.__finch__/1, []},
+        http_client: {:finch, []},
         max_retries: 3,
         backoff_type: :rand_exp,
         backoff_min: 1,

@@ -171,8 +171,7 @@ defmodule Goth.Client do
   end
 
   defp request(method, url, headers, body) do
-    client = {Goth.HTTPClient.Finch, Goth.HTTPClient.Finch.init([])}
-    Goth.HTTPClient.request(client, method, url, headers, body, [])
+    Goth.__finch__(method: method, url: url, headers: headers, body: body)
   end
 
   defp request!(method, url, headers, body) do

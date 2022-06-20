@@ -12,8 +12,7 @@ Change your `mix.exs`:
 ```elixir
 def deps do
   [
-    {:goth, "~> 1.3-rc"},
-    {:finch, "~> 0.9.0 or ~> 0.10.0 or ~> 0.11.0 or ~> 0.12.0"}
+    {:goth, "~> 1.3-rc"}
   ]
 end
 ```

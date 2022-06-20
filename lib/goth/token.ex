@@ -43,7 +43,7 @@ defmodule Goth.Token do
           `{:ok, %{status: status, headers: headers, body: body}}` or `{:error, exception}`.
           See "Custom HTTP Client" section below for more information.
 
-      `fun` can also be an atom `:finch` to use the built-in [Finch](http://github.com/benoitc/finch)-based
+      `fun` can also be an atom `:finch` to use the built-in [Finch](http://github.com/sneako/finch)-based
       client.
 
       Defaults to `{:finch, []}`.
@@ -110,15 +110,9 @@ defmodule Goth.Token do
           {url, options} = Keyword.pop!(options, :url)
           {headers, options} = Keyword.pop!(options, :headers)
           {body, options} = Keyword.pop!(options, :body)
-          options = [:with_body] ++ options
 
-          case :finch.request(method, url, headers, body, options) do
-            {:ok, status, headers, response_body} ->
-              {:ok, %{status: status, headers: headers, body: response_body}}
-
-            {:error, reason} ->
-              {:error, RuntimeError.exception(inspect(reason))}
-          end
+          Finch.build(method, url, headers, body)
+          |> Finch.request(Goth.Finch, options)
         end
       end
 
