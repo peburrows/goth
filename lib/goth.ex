@@ -89,35 +89,7 @@ defmodule Goth do
     GenServer.start_link(__MODULE__, opts, name: registry_name(name))
   end
 
-  defmacrop ensure_finch do
-    if Code.ensure_loaded?(Finch) do
-      :ok
-    else
-      quote do
-        unless Code.ensure_loaded?(Finch) do
-          Logger.error("""
-          Could not find finch dependency.
-
-          Please add :finch to your dependencies:
-
-              {:finch, "~> 0.9.0 or ~> 0.10.0 or ~> 0.11.0 or ~> 0.12.0"},
-
-          Or use a different HTTP client. See Goth.Token.fetch/1 documentation for more information.
-          """)
-
-          raise "missing finch dependency"
-        end
-
-        {:ok, _} = Application.ensure_all_started(:finch)
-
-        :ok
-      end
-    end
-  end
-
   def __finch__(options) do
-    ensure_finch()
-
     {method, options} = Keyword.pop!(options, :method)
     {url, options} = Keyword.pop!(options, :url)
     {headers, options} = Keyword.pop!(options, :headers)

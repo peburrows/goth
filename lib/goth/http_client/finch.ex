@@ -8,21 +8,6 @@ defmodule Goth.HTTPClient.Finch do
 
   @impl true
   def init(opts) do
-    unless Code.ensure_loaded?(Finch) do
-      Logger.error("""
-      Could not find finch dependency.
-
-      Please add :finch to your dependencies:
-
-          {:finch, "~> 0.9.0 or ~> 0.10.0 or ~> 0.11.0 or ~> 0.12.0"},
-
-      Or use a different HTTP client. See Goth.Token.fetch/1 documentation for more information.
-      """)
-
-      raise "missing finch dependency"
-    end
-
-    {:ok, _} = Application.ensure_all_started(:finch)
     struct!(__MODULE__, opts)
   end
 
