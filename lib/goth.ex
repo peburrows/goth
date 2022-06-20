@@ -36,7 +36,7 @@ defmodule Goth do
       `#{@refresh_before_minutes * 60}` (#{@refresh_before_minutes} minutes).
 
     * `:http_client` - a function that makes the HTTP request. Defaults to using built-in
-      integration with [Hackney](https://github.com/benoitc/hackney)
+      integration with [Finch](https://github.com/sneako/finch)
 
       See documentation for the `:http_client` option in `Goth.Token.fetch/1` for
       more information.
@@ -83,54 +83,21 @@ defmodule Goth do
     opts =
       opts
       |> Keyword.put_new(:refresh_before, @refresh_before_minutes * 60)
-      |> Keyword.put_new(:http_client, {:hackney, []})
+      |> Keyword.put_new(:http_client, {:finch, []})
 
     name = Keyword.fetch!(opts, :name)
     GenServer.start_link(__MODULE__, opts, name: registry_name(name))
   end
 
-  defmacrop ensure_hackney do
-    if Code.ensure_loaded?(:hackney) do
-      :ok
-    else
-      quote do
-        unless Code.ensure_loaded?(:hackney) do
-          Logger.error("""
-          Could not find hackney dependency.
-
-          Please add :hackney to your dependencies:
-
-              {:hackney, "~> 1.17"}
-
-          Or use a different HTTP client. See Goth.Token.fetch/1 documentation for more information.
-          """)
-
-          raise "missing hackney dependency"
-        end
-
-        {:ok, _} = Application.ensure_all_started(:hackney)
-
-        :ok
-      end
-    end
-  end
-
-  def __hackney__(options) do
-    ensure_hackney()
-
+  def __finch__(options) do
     {method, options} = Keyword.pop!(options, :method)
     {url, options} = Keyword.pop!(options, :url)
     {headers, options} = Keyword.pop!(options, :headers)
     {body, options} = Keyword.pop!(options, :body)
-    options = [:with_body] ++ options
 
-    case :hackney.request(method, url, headers, body, options) do
-      {:ok, status, headers, response_body} ->
-        {:ok, %{status: status, headers: headers, body: response_body}}
+    finch_request = Finch.build(method, url, headers, body)
 
-      {:error, reason} ->
-        {:error, RuntimeError.exception(inspect(reason))}
-    end
+    Finch.request(finch_request, Goth.Finch, options)
   end
 
   @doc """
@@ -232,12 +199,12 @@ defmodule Goth do
     end
   end
 
-  defp start_http_client(:hackney) do
-    {&__hackney__/1, []}
+  defp start_http_client(:finch) do
+    {&__finch__/1, []}
   end
 
-  defp start_http_client({:hackney, opts}) do
-    {&__hackney__/1, opts}
+  defp start_http_client({:finch, opts}) do
+    {&__finch__/1, opts}
   end
 
   defp start_http_client(fun) when is_function(fun, 1) do

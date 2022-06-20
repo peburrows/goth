@@ -43,10 +43,10 @@ defmodule Goth.Token do
           `{:ok, %{status: status, headers: headers, body: body}}` or `{:error, exception}`.
           See "Custom HTTP Client" section below for more information.
 
-      `fun` can also be an atom `:hackney` to use the built-in [Hackney](http://github.com/benoitc/hackney)-based
+      `fun` can also be an atom `:finch` to use the built-in [Finch](http://github.com/sneako/finch)-based
       client.
 
-      Defaults to `{:hackney, []}`.
+      Defaults to `{:finch, []}`.
 
   ## Source
 
@@ -102,32 +102,26 @@ defmodule Goth.Token do
   `:method`, `:url`, `:headers`, and `:body`. The funtion must return
   `{:ok, %{status: status, headers: headers, body: body}}` or `{:error, exception}`.
 
-  Here's an example with Hackney:
+  Here's an example with Finch:
 
       defmodule MyApp do
-        def request_with_hackney(options) do
+        def request_with_finch(options) do
           {method, options} = Keyword.pop!(options, :method)
           {url, options} = Keyword.pop!(options, :url)
           {headers, options} = Keyword.pop!(options, :headers)
           {body, options} = Keyword.pop!(options, :body)
-          options = [:with_body] ++ options
 
-          case :hackney.request(method, url, headers, body, options) do
-            {:ok, status, headers, response_body} ->
-              {:ok, %{status: status, headers: headers, body: response_body}}
-
-            {:error, reason} ->
-              {:error, RuntimeError.exception(inspect(reason))}
-          end
+          Finch.build(method, url, headers, body)
+          |> Finch.request(Goth.Finch, options)
         end
       end
 
   And here is how it can be used:
 
-      iex> Goth.Token.fetch(%{source: source, http_client: &MyApp.request_with_hackney/1})
+      iex> Goth.Token.fetch(%{source: source, http_client: &MyApp.request_with_finch/1})
       {:ok, %Goth.Token{...}}
 
-      iex> Goth.Token.fetch(%{source: source, http_client: {&MyApp.request_with_hackney/1, connect_timeout: 5000}})
+      iex> Goth.Token.fetch(%{source: source, http_client: {&MyApp.request_with_finch/1, connect_timeout: 5000}})
       {:ok, %Goth.Token{...}}
 
   ## Examples
@@ -175,16 +169,16 @@ defmodule Goth.Token do
   for more information on metadata server.
 
 
-  #### Passing custom Hackney options
+  #### Passing custom Finch options
 
-      iex> Goth.Token.fetch(%{source: source, http_client: {:hackney, connect_timeout: 5000}})
+      iex> Goth.Token.fetch(%{source: source, http_client: {:finch, pool_timeout: 5000}})
       {:ok, %Goth.Token{...}}
 
   """
   @doc since: "1.3.0"
   @spec fetch(map()) :: {:ok, t()} | {:error, Exception.t()}
   def fetch(config) when is_map(config) do
-    config = Map.put_new(config, :http_client, {:hackney, []})
+    config = Map.put_new(config, :http_client, {:finch, []})
 
     request(config)
   end
@@ -337,8 +331,8 @@ defmodule Goth.Token do
     }
   end
 
-  defp request({:hackney, extra_options}, options) do
-    Goth.__hackney__(options ++ extra_options)
+  defp request({:finch, extra_options}, options) do
+    Goth.__finch__(options ++ extra_options)
   end
 
   defp request({mod, _} = config, options) when is_atom(mod) do

@@ -8,7 +8,8 @@ defmodule Goth.Application do
 
     if envs == [] do
       children = [
-        {Registry, keys: :unique, name: Goth.Registry}
+        {Registry, keys: :unique, name: Goth.Registry},
+        {Finch, name: Goth.Finch, pools: %{default: [protocol: :http1]}}
       ]
 
       Supervisor.start_link(children, strategy: :one_for_one)
