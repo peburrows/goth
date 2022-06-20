@@ -19,7 +19,7 @@ A simple library to generate and retrieve OAuth2 tokens for use with Google Clou
    def deps do
      [
        {:goth, "~> 1.3-rc"},
-       {:finch, "~> 0.9.0"}
+       {:finch, "~> 0.9"}
      ]
    end
    ```
