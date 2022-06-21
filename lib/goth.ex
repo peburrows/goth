@@ -10,6 +10,7 @@ defmodule Goth do
   require Logger
 
   alias Goth.Backoff
+  alias Goth.Config
   alias Goth.Token
 
   @registry Goth.Registry
@@ -84,6 +85,7 @@ defmodule Goth do
       opts
       |> Keyword.put_new(:refresh_before, @refresh_before_minutes * 60)
       |> Keyword.put_new(:http_client, {:finch, []})
+      |> Keyword.put_new(:source, {:default, []})
 
     name = Keyword.fetch!(opts, :name)
     GenServer.start_link(__MODULE__, opts, name: registry_name(name))
@@ -155,6 +157,7 @@ defmodule Goth do
     state =
       state
       |> Map.update!(:http_client, &start_http_client/1)
+      |> Map.update!(:source, &put_default_source_credentials/1)
       |> Map.replace!(:backoff, Backoff.new(backoff_opts))
       |> Map.replace!(:retries, state.max_retries)
 
@@ -220,6 +223,40 @@ defmodule Goth do
 
     Goth.HTTPClient.init(config)
   end
+
+  defp put_default_source_credentials({:default, opts}) do
+    case Config.get(:token_source) do
+      {:ok, :oauth_jwt} ->
+        {:ok, private_key} = Config.get(:private_key)
+        {:ok, client_email} = Config.get(:actor_email)
+
+        credentials = %{
+          "private_key" => private_key,
+          "client_email" => client_email
+        }
+
+        {:service_account, credentials, opts}
+
+      {:ok, :oauth_refresh} ->
+        {:ok, refresh_token} = Config.get(:refresh_token)
+        {:ok, client_id} = Config.get(:project_id)
+        {:ok, client_secret} = Config.get(:client_secret)
+
+        credentials = %{
+          "refresh_token" => refresh_token,
+          "client_id" => client_id,
+          "client_secret" => client_secret
+        }
+
+        {:refresh_token, credentials, opts}
+
+      {:ok, :metadata} ->
+        {:metadata, opts}
+    end
+  end
+
+  defp put_default_source_credentials({type, credentials}), do: {type, credentials, []}
+  defp put_default_source_credentials(source), do: source
 
   @impl true
   def handle_info(:refresh, state) do

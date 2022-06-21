@@ -57,6 +57,117 @@ defmodule GothTest do
     {:ok, ^token} = Goth.fetch(test)
   end
 
+  test "lazily get default service account", %{test: test} do
+    bypass = Bypass.open()
+    now = System.system_time(:second)
+    pid = self()
+    url = "http://localhost:#{bypass.port}"
+
+    # The test configuration sets an example JSON blob. We override it briefly
+    # during this test.
+    System.put_env("GOOGLE_APPLICATION_CREDENTIALS", "test/data/test-credentials-2.json")
+    Application.stop(:goth)
+    Application.start(:goth)
+
+    Bypass.expect(bypass, fn conn ->
+      send(pid, :pong)
+      body = ~s|{"access_token":"dummy","expires_in":3599,"token_type":"Bearer"}|
+      Plug.Conn.resp(conn, 200, body)
+    end)
+
+    start_supervised!({Goth, name: test, source: {:default, url: url}})
+
+    # higher timeouts since calculating JWT is expensive
+    assert_receive :pong, 1000
+
+    {:ok, token} = Goth.fetch(test)
+    assert token.token == "dummy"
+    assert token.type == "Bearer"
+    assert_in_delta token.expires, now + 3599, 1
+
+    {:ok, ^token} = Goth.fetch(test)
+    System.delete_env("GOOGLE_APPLICATION_CREDENTIALS")
+    Application.stop(:goth)
+    Application.start(:goth)
+  end
+
+  test "lazily get default refresh token", %{test: test} do
+    bypass = Bypass.open()
+    now = System.system_time(:second)
+    pid = self()
+    url = "http://localhost:#{bypass.port}"
+
+    System.put_env("GOOGLE_CLOUD_PROJECT", "test-project")
+    current_json = Application.get_env(:goth, :json)
+    root_dir = Application.get_env(:goth, :config_root_dir)
+    Application.put_env(:goth, :json, nil, persistent: true)
+    Application.put_env(:goth, :config_root_dir, "test/data/home", persistent: true)
+    Application.stop(:goth)
+    Application.start(:goth)
+
+    Bypass.expect(bypass, fn conn ->
+      send(pid, :pong)
+      body = ~s|{"access_token":"dummy","expires_in":3599,"token_type":"Bearer"}|
+      Plug.Conn.resp(conn, 200, body)
+    end)
+
+    start_supervised!({Goth, name: test, source: {:default, url: url}})
+
+    # higher timeouts since calculating JWT is expensive
+    assert_receive :pong, 1000
+
+    {:ok, token} = Goth.fetch(test)
+    assert token.token == "dummy"
+    assert token.type == "Bearer"
+    assert_in_delta token.expires, now + 3599, 1
+
+    {:ok, ^token} = Goth.fetch(test)
+    System.delete_env("GOOGLE_CLOUD_PROJECT")
+    Application.put_env(:goth, :json, current_json, persistent: true)
+    Application.put_env(:goth, :config_root_dir, root_dir, persistent: true)
+    Application.stop(:goth)
+    Application.start(:goth)
+  end
+
+  test "lazily get default metadata", %{test: test} do
+    bypass = Bypass.open()
+    now = System.system_time(:second)
+    pid = self()
+    url = "http://localhost:#{bypass.port}"
+
+    # The test configuration sets an example JSON blob. We override it briefly
+    # during this test.
+    System.put_env("GOOGLE_CLOUD_PROJECT", "test-project")
+    all_env = Application.get_all_env(:goth)
+    Application.put_all_env([goth: [json: nil, config_root_dir: nil]], persistent: true)
+    Application.stop(:goth)
+    Application.start(:goth)
+
+    Bypass.stub(bypass, "GET", "/computeMetadata/v1/instance/service-accounts/default/token", fn conn ->
+      send(pid, :pong)
+      body = ~s|{"access_token":"dummy","expires_in":3599,"token_type":"Bearer"}|
+      Plug.Conn.resp(conn, 200, body)
+    end)
+
+    start_supervised!({Goth, name: test, source: {:default, url: url}})
+
+    # higher timeouts since calculating JWT is expensive
+    assert_receive :pong, 1000
+
+    {:ok, token} = Goth.fetch(test)
+    assert token.token == "dummy"
+    assert token.type == "Bearer"
+    assert_in_delta token.expires, now + 3599, 1
+
+    {:ok, ^token} = Goth.fetch(test)
+
+    # Restore original config
+    System.delete_env("GOOGLE_CLOUD_PROJECT")
+    Application.put_all_env([goth: all_env], persistent: true)
+    Application.stop(:goth)
+    Application.start(:goth)
+  end
+
   test "custom http client", %{test: test} do
     now = System.system_time(:second)
 
