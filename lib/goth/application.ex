@@ -4,15 +4,12 @@ defmodule Goth.Application do
 
   @impl true
   def start(_type, _args) do
-    if Application.get_all_env(:goth) == [] do
-      children = [
-        {Registry, keys: :unique, name: Goth.Registry},
-        {Finch, name: Goth.Finch, pools: %{default: [protocol: :http1]}}
-      ]
+    children = [
+      {Registry, keys: :unique, name: Goth.Registry},
+      {Finch, name: Goth.Finch, pools: %{default: [protocol: :http1]}},
+      Goth.TokenStore
+    ]
 
-      Supervisor.start_link(children, strategy: :one_for_one)
-    else
-      Goth.Supervisor.start_link([])
-    end
+    Supervisor.start_link(children, strategy: :one_for_one, name: Goth.Supervisor)
   end
 end
