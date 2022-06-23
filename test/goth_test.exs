@@ -1,5 +1,5 @@
 defmodule GothTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case
 
   test "fetch/1", %{test: test} do
     now = System.system_time(:second)
