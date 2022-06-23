@@ -1,4 +1,4 @@
-defmodule Goth.Legacy.ConfigTest do
+defmodule Goth.ConfigTest do
   use ExUnit.Case
   alias Goth.Config
 

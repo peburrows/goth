@@ -1,4 +1,4 @@
-defmodule Goth.Legacy.TokenTest do
+defmodule Goth.TokenLegacyTest do
   use ExUnit.Case
   alias Goth.Token
 
