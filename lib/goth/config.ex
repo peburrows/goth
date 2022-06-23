@@ -54,7 +54,7 @@ defmodule Goth.Config do
     |> load_and_init()
   end
 
-  defp __ensure_started__ do
+  defp ensure_started do
     envs = Application.get_all_env(:goth)
 
     case Supervisor.start_child(Goth.Supervisor, {__MODULE__, envs}) do
@@ -106,7 +106,7 @@ defmodule Goth.Config do
   end
 
   def add_config(config) when is_map(config) do
-    __ensure_started__()
+    ensure_started()
     config = set_token_source(config)
     GenServer.call(__MODULE__, {:add_config, config["client_email"], config})
   end
@@ -230,7 +230,7 @@ defmodule Goth.Config do
   def set(key, value), do: set(:default, key, value)
 
   def set(account, key, value) do
-    __ensure_started__()
+    ensure_started()
     GenServer.call(__MODULE__, {:set, account, key, value})
   end
 
@@ -247,7 +247,7 @@ defmodule Goth.Config do
   end
 
   def get(account, key) do
-    __ensure_started__()
+    ensure_started()
     GenServer.call(__MODULE__, {:get, account, key})
   end
 
