@@ -30,7 +30,29 @@ defmodule Goth.Token do
 
   Config may contain the following keys:
 
-    * `:source` - See "Source" section below.
+    * `:source` - the source to retrieve the token from.
+
+      Supported values include:
+
+        * `{:service_account, credentials}` - for fetching token using service account credentials
+
+        * `{:refresh_token, credentials}` - for fetching token using refresh token
+
+        * `:metadata` - for fetching token using Google internal metadata service
+
+      If `:source` is not set, Goth will:
+
+        * Check application environment. You can set it with: `config :goth, json: File.read!("credentials.json")`.
+
+        * Check `GOOGLE_APPLICATION_CREDENTIALS` env variable that contains path to credentials file.
+
+        * Check `~/.config/gcloud/application_default_credentials.json` file.
+
+        * Check Google internal metadata service
+
+        * Otherwise, raise an error.
+
+      See "Source" section below for more information.
 
     * `:http_client` - a funtion that makes the HTTP request.
 

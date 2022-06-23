@@ -29,8 +29,28 @@ defmodule Goth do
 
     * `:source` - the source to retrieve the token from.
 
-      See documentation for the `:source` option in `Goth.Token.fetch/1` for
-      more information.
+      Supported values include:
+
+        * `{:service_account, credentials}` - fetch token using service account credentials
+
+        * `{:refresh_token, credentials}` - fetch token using refresh token
+
+        * `:metadata` - fetching token using Google internal metadata service
+
+      If `:source` is not set, Goth will:
+
+        * Check application environment. You can set it with: `config :goth, json: File.read!("credentials.json")`.
+
+        * Check `GOOGLE_APPLICATION_CREDENTIALS` env variable that contains path to credentials file.
+
+        * Check `~/.config/gcloud/application_default_credentials.json` file.
+
+        * Check Google internal metadata service
+
+        * Otherwise, raise an error.
+
+      See documentation of the "Source" section in `Goth.Token.fetch/1` documentation
+      for more information.
 
     * `:refresh_before` - Time in seconds before the token is about to expire
       that it is tried to be automatically refreshed. Defaults to
@@ -39,7 +59,7 @@ defmodule Goth do
     * `:http_client` - a function that makes the HTTP request. Defaults to using built-in
       integration with [Finch](https://github.com/sneako/finch)
 
-      See documentation for the `:http_client` option in `Goth.Token.fetch/1` for
+      See documentation of the `:http_client` option in `Goth.Token.fetch/1` for
       more information.
 
     * `:prefetch` - how to prefetch the token when the server starts. The possible options
