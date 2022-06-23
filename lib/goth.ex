@@ -228,7 +228,7 @@ defmodule Goth do
     case Config.get(:token_source) do
       {:ok, :oauth_jwt} ->
         {:ok, private_key} = Config.get(:private_key)
-        {:ok, client_email} = Config.get(:actor_email)
+        {:ok, client_email} = Config.get(:client_email)
 
         credentials = %{
           "private_key" => private_key,
@@ -239,7 +239,7 @@ defmodule Goth do
 
       {:ok, :oauth_refresh} ->
         {:ok, refresh_token} = Config.get(:refresh_token)
-        {:ok, client_id} = Config.get(:project_id)
+        {:ok, client_id} = Config.get(:client_id)
         {:ok, client_secret} = Config.get(:client_secret)
 
         credentials = %{
