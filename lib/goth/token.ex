@@ -220,8 +220,40 @@ defmodule Goth.Token do
 
   def fetch(config) when is_map(config) do
     config
+    |> Map.put_new(:source, {:default, []})
     |> Map.put_new(:http_client, {:finch, []})
     |> request()
+  end
+
+  defp request(%{source: {:default, opts}} = config) do
+    case Goth.Config.get(:token_source) do
+      {:ok, :oauth_jwt} ->
+        {:ok, private_key} = Goth.Config.get(:private_key)
+        {:ok, client_email} = Goth.Config.get(:client_email)
+
+        credentials = %{
+          "private_key" => private_key,
+          "client_email" => client_email
+        }
+
+        request(%{config | source: {:service_account, credentials, opts}})
+
+      {:ok, :oauth_refresh} ->
+        {:ok, refresh_token} = Goth.Config.get(:refresh_token)
+        {:ok, client_id} = Goth.Config.get(:client_id)
+        {:ok, client_secret} = Goth.Config.get(:client_secret)
+
+        credentials = %{
+          "refresh_token" => refresh_token,
+          "client_id" => client_id,
+          "client_secret" => client_secret
+        }
+
+        request(%{config | source: {:refresh_token, credentials, opts}})
+
+      {:ok, :metadata} ->
+        request(%{config | source: {:metadata, opts}})
+    end
   end
 
   defp request(%{source: {:service_account, credentials}} = config) do
