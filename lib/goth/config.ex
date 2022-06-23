@@ -60,6 +60,7 @@ defmodule Goth.Config do
     case Supervisor.start_child(Goth.Supervisor, {__MODULE__, envs}) do
       {:ok, _} -> :ok
       {:error, {:already_started, _}} -> :ok
+      {:error, _} -> raise "cannot start Goth.Config"
     end
   end
 
@@ -186,13 +187,17 @@ defmodule Goth.Config do
           Client.retrieve_metadata_project()
         rescue
           e ->
-            if e.message =~ ":nxdomain" do
-              raise " Failed to retrieve project data from GCE internal metadata service.
-                   Either you haven't configured your GCP credentials, you aren't running on GCE, or both.
-                   Please see README.md for instructions on configuring your credentials."
-            else
-              reraise e, __STACKTRACE__
+            if Map.get(e, :reason) == :nxdomain do
+              require Logger
+
+              Logger.error("""
+              Failed to retrieve project data from GCE internal metadata service.
+              Either you haven't configured your GCP credentials, you aren't running on GCE, or both.
+              Please see README.md for instructions on configuring your credentials.\
+              """)
             end
+
+            reraise e, __STACKTRACE__
         end
 
       project_id ->
