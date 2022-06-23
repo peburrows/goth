@@ -39,7 +39,6 @@ defmodule Goth.Mixfile do
       {:jason, "~> 1.1"},
       {:finch, "~> 0.9"},
       {:bypass, "~> 2.1", only: :test},
-      {:mix_test_watch, "~> 0.2", only: :dev},
       {:ex_doc, "~> 0.19", only: :dev},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false}
