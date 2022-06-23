@@ -41,6 +41,7 @@ defmodule Goth.Token do
         * `{fun, opts}` - `fun` must be a 1-arity funtion that receives a keyword list with fields
           `:method`, `:url`, `:headers`, and `:body` along with any passed `opts`. The funtion must return
           `{:ok, %{status: status, headers: headers, body: body}}` or `{:error, exception}`.
+
           See "Custom HTTP Client" section below for more information.
 
       `fun` can also be an atom `:finch` to use the built-in [Finch](http://github.com/sneako/finch)-based
@@ -51,6 +52,10 @@ defmodule Goth.Token do
   ## Source
 
   Source can be one of:
+
+  #### Service account - `{:service_account, credentials}`
+
+  Same as `{:service_account, credentials, []}`
 
   #### Service account - `{:service_account, credentials, options}`
 
@@ -70,6 +75,10 @@ defmodule Goth.Token do
     * `:claims` - self-signed JWT extra claims. Should be a map with string keys only.
       A self-signed JWT will be [exchanged for a Google-signed ID token](https://cloud.google.com/functions/docs/securing/authenticating#exchanging_a_self-signed_jwt_for_a_google-signed_id_token)
 
+  #### Refresh token - `{:refresh_token, credentials}`
+
+  Same as `{:refresh_token, credentials, []}`
+
   #### Refresh token - `{:refresh_token, credentials, options}`
 
   The `credentials` is a map and can contain the following keys:
@@ -84,6 +93,10 @@ defmodule Goth.Token do
 
     * `:url` - the URL of the authentication service, defaults to:
       `"https://www.googleapis.com/oauth2/v4/token"`
+
+  #### Google metadata server - `:metadata`
+
+  Same as `{:metadata, []}`
 
   #### Google metadata server - `{:metadata, options}`
 
@@ -118,10 +131,10 @@ defmodule Goth.Token do
 
   And here is how it can be used:
 
-      iex> Goth.Token.fetch(%{source: source, http_client: &MyApp.request_with_finch/1})
+      iex> Goth.Token.fetch(source: source, http_client: &MyApp.request_with_finch/1)
       {:ok, %Goth.Token{...}}
 
-      iex> Goth.Token.fetch(%{source: source, http_client: {&MyApp.request_with_finch/1, connect_timeout: 5000}})
+      iex> Goth.Token.fetch(source: source, http_client: {&MyApp.request_with_finch/1, receive_timeout: 5000})
       {:ok, %Goth.Token{...}}
 
   ## Examples
@@ -129,7 +142,7 @@ defmodule Goth.Token do
   #### Generate a token using a service account credentials file:
 
       iex> credentials = "credentials.json" |> File.read!() |> Jason.decode!()
-      iex> Goth.Token.fetch(%{source: {:service_account, credentials, []}})
+      iex> Goth.Token.fetch(source: {:service_account, credentials})
       {:ok, %Goth.Token{...}}
 
   You can generate a credentials file containing service account using `gcloud` utility like this:
@@ -140,20 +153,20 @@ defmodule Goth.Token do
 
       iex> credentials = "credentials.json" |> File.read!() |> Jason.decode!()
       ...> claims = %{"target_audience" => "https://<GCP_REGION>-<PROJECT_ID>.cloudfunctions.net/<CLOUD_FUNCTION_NAME>"}
-      ...> Goth.Token.fetch(%{source: {:service_account, credentials, [claims: claims]}})
+      ...> Goth.Token.fetch(source: {:service_account, credentials, [claims: claims]})
       {:ok, %Goth.Token{...}}
 
   #### Generate an impersonated token using a service account credentials file:
 
       iex> credentials = "credentials.json" |> File.read!() |> Jason.decode!()
       ...> claims = %{"sub" => "<IMPERSONATED_ACCOUNT_EMAIL>"}
-      ...> Goth.Token.fetch(%{source: {:service_account, credentials, [claims: claims]}})
+      ...> Goth.Token.fetch(source: {:service_account, credentials, [claims: claims]})
       {:ok, %Goth.Token{...}}
 
   #### Retrieve the token using a refresh token:
 
       iex> credentials = "credentials.json" |> File.read!() |> Jason.decode!()
-      iex> Goth.Token.fetch(%{source: {:refresh_token, credentials, []}})
+      iex> Goth.Token.fetch(source: {:refresh_token, credentials})
       {:ok, %Goth.Token{...}}
 
   You can generate a credentials file containing refresh token using `gcloud` utility like this:
@@ -162,7 +175,7 @@ defmodule Goth.Token do
 
   #### Retrieve the token using the Google metadata server:
 
-      iex> Goth.Token.fetch(%{source: {:metadata, []}})
+      iex> Goth.Token.fetch(source: :metadata})
       {:ok, %Goth.Token{...}}
 
   See [Storing and retrieving instance metadata](https://cloud.google.com/compute/docs/storing-retrieving-metadata)
@@ -171,16 +184,26 @@ defmodule Goth.Token do
 
   #### Passing custom Finch options
 
-      iex> Goth.Token.fetch(%{source: source, http_client: {:finch, pool_timeout: 5000}})
+      iex> Goth.Token.fetch(source: source, http_client: {:finch, pool_timeout: 5000})
       {:ok, %Goth.Token{...}}
 
   """
   @doc since: "1.3.0"
-  @spec fetch(map()) :: {:ok, t()} | {:error, Exception.t()}
-  def fetch(config) when is_map(config) do
-    config = Map.put_new(config, :http_client, {:finch, []})
+  @spec fetch(keyword | map()) :: {:ok, t()} | {:error, Exception.t()}
+  def fetch(config)
 
-    request(config)
+  def fetch(config) when is_list(config) do
+    config |> Map.new() |> fetch()
+  end
+
+  def fetch(config) when is_map(config) do
+    config
+    |> Map.put_new(:http_client, {:finch, []})
+    |> request()
+  end
+
+  defp request(%{source: {:service_account, credentials}} = config) do
+    request(%{config | source: {:service_account, credentials, []}})
   end
 
   defp request(%{source: {:service_account, credentials, options}} = config)
@@ -215,6 +238,10 @@ defmodule Goth.Token do
     end
   end
 
+  defp request(%{source: {:refresh_token, credentials}} = config) do
+    request(%{config | source: {:refresh_token, credentials, []}})
+  end
+
   defp request(%{source: {:refresh_token, credentials, options}} = config)
        when is_map(credentials) and is_list(options) do
     url = Keyword.get(options, :url, @default_url)
@@ -233,6 +260,10 @@ defmodule Goth.Token do
 
     response = request(config.http_client, method: :post, url: url, headers: headers, body: body)
     handle_response(response)
+  end
+
+  defp request(%{source: :metadata} = config) do
+    %{config | source: {:metadata, []}}
   end
 
   defp request(%{source: {:metadata, options}} = config) when is_list(options) do
