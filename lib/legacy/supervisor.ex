@@ -2,18 +2,16 @@ defmodule Goth.Supervisor do
   @moduledoc false
 
   use Supervisor
-  alias Goth.Config
   alias Goth.TokenStore
 
-  def start_link(envs) do
-    Supervisor.start_link(__MODULE__, envs, name: __MODULE__)
+  def start_link(_) do
+    Supervisor.start_link(__MODULE__, [], name: __MODULE__)
   end
 
   @impl true
-  def init(envs) do
+  def init(_) do
     children = [
       {Finch, name: Goth.Finch, pools: %{default: [protocol: :http1]}},
-      {Config, envs},
       TokenStore,
       {Registry, keys: :unique, name: Goth.Registry}
     ]
