@@ -17,7 +17,7 @@ defmodule Goth.Config do
   # `Goth.Config.set/2`
 
   use GenServer
-  alias Goth.Client
+  require Logger
 
   # this using macro isn't actually necessary,
   defmacro __using__(_opts) do
@@ -184,17 +184,17 @@ defmodule Goth.Config do
            config["project_id"] || config["quota_project_id"] do
       nil ->
         try do
-          Client.retrieve_metadata_project()
+          Goth.Client.retrieve_metadata_project()
         rescue
           e ->
             if Map.get(e, :reason) == :nxdomain do
-              require Logger
-
               Logger.error("""
               Failed to retrieve project data from GCE internal metadata service.
               Either you haven't configured your GCP credentials, you aren't running on GCE, or both.
               Please see README.md for instructions on configuring your credentials.\
               """)
+            else
+              Logger.error(Exception.message(e))
             end
 
             reraise e, __STACKTRACE__
