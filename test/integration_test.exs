@@ -4,6 +4,8 @@ defmodule IntegrationTest do
 
   describe "from source option" do
     test "gets the service account token", %{test: test} do
+      now = System.system_time(:second)
+
       credentials =
         Path.expand("config/credentials.json")
         |> File.read!()
@@ -13,10 +15,16 @@ defmodule IntegrationTest do
       Application.start(:goth)
 
       assert {:ok, _} = Goth.start_link(name: test, source: {:service_account, credentials})
-      assert {:ok, %Goth.Token{}} = Goth.fetch(test)
+      assert {:ok, %Goth.Token{} = token} = Goth.fetch(test)
+      assert is_integer(token.expires)
+      assert_in_delta token.expires, now + 3599, 1
+      assert "ya29." <> _ = token.token
+      assert token.type == "Bearer"
     end
 
     test "gets the refresh token", %{test: test} do
+      now = System.system_time(:second)
+
       credentials =
         Path.expand("config/gcloud/application_default_credentials.json")
         |> File.read!()
@@ -26,7 +34,11 @@ defmodule IntegrationTest do
       Application.start(:goth)
 
       assert {:ok, _} = Goth.start_link(name: test, source: {:refresh_token, credentials})
-      assert {:ok, %Goth.Token{}} = Goth.fetch(test)
+      assert {:ok, %Goth.Token{} = token} = Goth.fetch(test)
+      assert is_integer(token.expires)
+      assert_in_delta token.expires, now + 3599, 1
+      assert "ya29." <> _ = token.token
+      assert token.type == "Bearer"
     end
   end
 
@@ -51,10 +63,15 @@ defmodule IntegrationTest do
     end
 
     test "gets the service account token from GOOGLE_APPLICATION_CREDENTIALS", %{test: test} do
+      now = System.system_time(:second)
       System.put_env("GOOGLE_APPLICATION_CREDENTIALS", Path.expand("config/credentials.json"))
 
       assert {:ok, _} = Goth.start_link(name: test)
-      assert {:ok, %Goth.Token{}} = Goth.fetch(test)
+      assert {:ok, %Goth.Token{} = token} = Goth.fetch(test)
+      assert is_integer(token.expires)
+      assert_in_delta token.expires, now + 3599, 1
+      assert "ya29." <> _ = token.token
+      assert token.type == "Bearer"
       assert {:ok, :oauth_jwt} = Goth.Config.get(:token_source)
 
       System.delete_env("GOOGLE_APPLICATION_CREDENTIALS")
@@ -62,10 +79,15 @@ defmodule IntegrationTest do
 
     @tag path: Path.expand("config")
     test "gets the refresh token from GOOGLE_CLOUD_PROJECT", %{test: test} do
+      now = System.system_time(:second)
       System.put_env("GOOGLE_CLOUD_PROJECT", System.fetch_env!("PROJECT_ID"))
 
       assert {:ok, _} = Goth.start_link(name: test)
-      assert {:ok, %Goth.Token{}} = Goth.fetch(test)
+      assert {:ok, %Goth.Token{} = token} = Goth.fetch(test)
+      assert is_integer(token.expires)
+      assert_in_delta token.expires, now + 3599, 1
+      assert "ya29." <> _ = token.token
+      assert token.type == "Bearer"
       assert {:ok, :oauth_refresh} = Goth.Config.get(:token_source)
 
       System.delete_env("GOOGLE_CLOUD_PROJECT")
