@@ -19,7 +19,11 @@ defmodule Goth.Mixfile do
         main: "readme",
         extras: ["README.md", "CHANGELOG.md", "UPGRADE_GUIDE.md"]
       ],
-      deps: deps()
+      deps: deps(),
+      aliases: aliases(),
+      preferred_cli_env: [
+        "test.all": :test
+      ]
     ]
   end
 
@@ -43,6 +47,10 @@ defmodule Goth.Mixfile do
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false}
     ]
+  end
+
+  def aliases do
+    ["test.all": ["test --include integration"]]
   end
 
   defp description do

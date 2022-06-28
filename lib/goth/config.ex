@@ -71,8 +71,12 @@ defmodule Goth.Config do
 
   defp load_and_init({false, app_config}) do
     config =
-      from_json(app_config) || from_config(app_config) || from_creds_file(app_config) ||
-        from_gcloud_adc(app_config) || from_metadata(app_config)
+      from_json(app_config) ||
+        from_config(app_config) ||
+        from_creds_file() ||
+        from_creds_env() ||
+        from_gcloud_adc(app_config) ||
+        from_metadata(app_config)
 
     config =
       config
@@ -138,10 +142,17 @@ defmodule Goth.Config do
     Keyword.get(config, :config)
   end
 
-  defp from_creds_file(_config) do
+  defp from_creds_file do
     case System.get_env("GOOGLE_APPLICATION_CREDENTIALS") do
       nil -> nil
       filename -> filename |> File.read!() |> decode_json()
+    end
+  end
+
+  defp from_creds_env do
+    case System.get_env("GOOGLE_APPLICATION_CREDENTIALS_JSON") do
+      nil -> nil
+      data -> decode_json(data)
     end
   end
 
