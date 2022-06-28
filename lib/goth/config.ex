@@ -58,9 +58,14 @@ defmodule Goth.Config do
     envs = Application.get_all_env(:goth)
 
     case Supervisor.start_child(Goth.Supervisor, {__MODULE__, envs}) do
-      {:ok, _} -> :ok
-      {:error, {:already_started, _}} -> :ok
-      {:error, _} -> raise "cannot start Goth.Config"
+      {:ok, _} ->
+        :ok
+
+      {:error, {:already_started, _}} ->
+        :ok
+
+      {:error, {{e, _}, _}} ->
+        raise e
     end
   end
 
