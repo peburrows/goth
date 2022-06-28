@@ -42,6 +42,8 @@ defmodule Goth do
 
         * Check `GOOGLE_APPLICATION_CREDENTIALS` env variable that contains path to credentials file.
 
+        * Check `GOOGLE_APPLICATION_CREDENTIALS_JSON` env variable that contains credentials JSON.
+
         * Check `~/.config/gcloud/application_default_credentials.json` file.
 
         * Check Google internal metadata service
