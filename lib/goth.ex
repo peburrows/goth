@@ -9,7 +9,6 @@ defmodule Goth do
 
   require Logger
 
-  alias Goth.Backoff
   alias Goth.Token
 
   @registry Goth.Registry
@@ -70,12 +69,9 @@ defmodule Goth do
 
     * `:max_retries` - the maximum number of retries (default: `20`)
 
-    * `:backoff_min` - the minimum backoff interval (default: `1_000`)
-
-    * `:backoff_max` - the maximum backoff interval (default: `30_000`)
-
-    * `:backoff_type` - the backoff strategy, `:exp` for exponential, `:rand` for random and
-      `:rand_exp` for random exponential (default: `:rand_exp`)
+    * `:retry_delay` - a function that receives the retry count (starting at 0) and returns the delay, the
+      number of milliseconds to sleep before making another attempt.
+      Defaults to a simple exponential backoff: 1s, 2s, 4s, 8s, ...
 
   ## Examples
 
@@ -107,6 +103,7 @@ defmodule Goth do
       |> Keyword.put_new(:refresh_before, @refresh_before_minutes * 60)
       |> Keyword.put_new(:http_client, {:finch, []})
       |> Keyword.put_new(:source, {:default, []})
+      |> Keyword.put_new(:retry_delay, &exp_backoff/1)
 
     name = Keyword.fetch!(opts, :name)
     GenServer.start_link(__MODULE__, opts, name: registry_name(name))
@@ -153,12 +150,12 @@ defmodule Goth do
   defstruct [
     :name,
     :source,
-    :backoff,
+    :retry_delay,
     :http_client,
     :retry_after,
     :refresh_before,
     max_retries: @max_retries,
-    retries: @max_retries
+    retries: 0
   ]
 
   defp read_from_ets(name) do
@@ -170,16 +167,10 @@ defmodule Goth do
 
   @impl true
   def init(opts) when is_list(opts) do
-    {backoff_opts, opts} = Keyword.split(opts, [:backoff_type, :backoff_min, :backoff_max])
     {prefetch, opts} = Keyword.pop(opts, :prefetch, :async)
 
     state = struct!(__MODULE__, opts)
-
-    state =
-      state
-      |> Map.update!(:http_client, &start_http_client/1)
-      |> Map.replace!(:backoff, Backoff.new(backoff_opts))
-      |> Map.replace!(:retries, state.max_retries)
+    state = Map.update!(state, :http_client, &start_http_client/1)
 
     case prefetch do
       :async ->
@@ -252,19 +243,20 @@ defmodule Goth do
     end
   end
 
-  defp handle_retry(exception, %{retries: 1}) do
+  defp handle_retry(exception, %{retries: retries, max_retries: max_retries}) when retries >= max_retries - 1 do
     raise "too many failed attempts to refresh, last error: #{inspect(exception)}"
   end
 
   defp handle_retry(_, state) do
-    {time_in_seconds, backoff} = Backoff.backoff(state.backoff)
-    Process.send_after(self(), :refresh, time_in_seconds)
+    state = %{state | retries: state.retries + 1}
+    time_in_milliseconds = state.retry_delay.(state.retries)
+    Process.send_after(self(), :refresh, time_in_milliseconds)
 
-    {:noreply, %{state | retries: state.retries - 1, backoff: backoff}}
+    {:noreply, state}
   end
 
   defp do_refresh(token, state) do
-    state = %{state | retries: state.max_retries, backoff: Backoff.reset(state.backoff)}
+    state = %{state | retries: 0}
     store_and_schedule_refresh(state, token)
 
     {:noreply, state}
@@ -275,6 +267,11 @@ defmodule Goth do
     time_in_seconds = max(token.expires - System.system_time(:second) - state.refresh_before, 0)
 
     Process.send_after(self(), :refresh, time_in_seconds * 1000)
+  end
+
+  defp exp_backoff(retry_count) do
+    delay = :math.pow(2, retry_count) |> round()
+    delay * 1000
   end
 
   defp put(name, token) do

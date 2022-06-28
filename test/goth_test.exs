@@ -230,7 +230,7 @@ defmodule GothTest do
   end
 
   @tag :capture_log
-  test "retries with rand backoff", %{test: test} do
+  test "retries with default exp backoff", %{test: test} do
     Process.flag(:trap_exit, true)
     pid = self()
     bypass = Bypass.open()
@@ -245,23 +245,20 @@ defmodule GothTest do
         name: test,
         source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
         http_client: {:finch, []},
-        max_retries: 3,
-        backoff_type: :rand,
-        backoff_min: 1,
-        backoff_max: 1_000
+        max_retries: 3
       )
 
     # higher timeouts since calculating JWT is expensive
     assert_receive :pong, 1000
-    assert_receive :pong, 1000
-    assert_receive :pong, 1000
+    assert_receive :pong, 2000
+    assert_receive :pong, 4000
 
     assert_receive {:EXIT, _, {%RuntimeError{message: "too many failed attempts to refresh" <> _}, _}},
-                   1000
+                   8000
   end
 
   @tag :capture_log
-  test "retries with exp backoff", %{test: test} do
+  test "retries with custom backoff", %{test: test} do
     Process.flag(:trap_exit, true)
     pid = self()
     bypass = Bypass.open()
@@ -271,36 +268,9 @@ defmodule GothTest do
       Plug.Conn.resp(conn, 500, "oops")
     end)
 
-    {:ok, _} =
-      Goth.start_link(
-        name: test,
-        source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
-        http_client: {:finch, []},
-        max_retries: 3,
-        backoff_type: :exp,
-        backoff_min: 1,
-        backoff_max: 1_000
-      )
-
-    # higher timeouts since calculating JWT is expensive
-    assert_receive :pong, 1000
-    assert_receive :pong, 1000
-    assert_receive :pong, 1000
-
-    assert_receive {:EXIT, _, {%RuntimeError{message: "too many failed attempts to refresh" <> _}, _}},
-                   1000
-  end
-
-  @tag :capture_log
-  test "retries with rand_exp backoff", %{test: test} do
-    Process.flag(:trap_exit, true)
-    pid = self()
-    bypass = Bypass.open()
-
-    Bypass.expect(bypass, fn conn ->
-      send(pid, :pong)
-      Plug.Conn.resp(conn, 500, "oops")
-    end)
+    fun = fn retry_count ->
+      retry_count * 100
+    end
 
     {:ok, _} =
       Goth.start_link(
@@ -308,18 +278,16 @@ defmodule GothTest do
         source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
         http_client: {:finch, []},
         max_retries: 3,
-        backoff_type: :rand_exp,
-        backoff_min: 1,
-        backoff_max: 1_000
+        retry_delay: fun
       )
 
     # higher timeouts since calculating JWT is expensive
-    assert_receive :pong, 1000
-    assert_receive :pong, 1000
-    assert_receive :pong, 1000
+    assert_receive :pong, 100
+    assert_receive :pong, 200
+    assert_receive :pong, 300
 
     assert_receive {:EXIT, _, {%RuntimeError{message: "too many failed attempts to refresh" <> _}, _}},
-                   1000
+                   400
   end
 
   test "refresh", %{test: test} do
