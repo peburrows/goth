@@ -69,7 +69,7 @@ defmodule Goth do
 
     * `:max_retries` - the maximum number of retries (default: `20`)
 
-    * `:backoff` - a function that receives the retry count (starting at 0) and returns the delay, the
+    * `:retry_delay` - a function that receives the retry count (starting at 0) and returns the delay, the
       number of milliseconds to sleep before making another attempt.
       Defaults to a simple exponential backoff: 1s, 2s, 4s, 8s, ...
 
@@ -103,7 +103,7 @@ defmodule Goth do
       |> Keyword.put_new(:refresh_before, @refresh_before_minutes * 60)
       |> Keyword.put_new(:http_client, {:finch, []})
       |> Keyword.put_new(:source, {:default, []})
-      |> Keyword.put_new(:backoff, &exp_backoff/1)
+      |> Keyword.put_new(:retry_delay, &exp_backoff/1)
 
     name = Keyword.fetch!(opts, :name)
     GenServer.start_link(__MODULE__, opts, name: registry_name(name))
@@ -150,7 +150,7 @@ defmodule Goth do
   defstruct [
     :name,
     :source,
-    :backoff,
+    :retry_delay,
     :http_client,
     :retry_after,
     :refresh_before,
@@ -270,12 +270,13 @@ defmodule Goth do
   end
 
   defp get_retry_delay(state) do
-    fun = Map.get(state, :backoff, &exp_backoff/1)
+    fun = Map.get(state, :retry_delay, &exp_backoff/1)
     fun.(state.retries)
   end
 
   defp exp_backoff(retry_count) do
-    Integer.pow(2, retry_count) * 1000
+    delay = :math.pow(2, retry_count) |> round()
+    delay * 1000
   end
 
   defp put(name, token) do

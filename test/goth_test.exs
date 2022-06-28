@@ -278,7 +278,7 @@ defmodule GothTest do
         source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
         http_client: {:finch, []},
         max_retries: 3,
-        backoff: fun
+        retry_delay: fun
       )
 
     # higher timeouts since calculating JWT is expensive
