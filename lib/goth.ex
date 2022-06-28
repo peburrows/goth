@@ -249,8 +249,8 @@ defmodule Goth do
 
   defp handle_retry(_, state) do
     state = %{state | retries: state.retries + 1}
-    time_in_seconds = get_retry_delay(state)
-    Process.send_after(self(), :refresh, time_in_seconds)
+    time_in_milliseconds = state.retry_delay.(state.retries)
+    Process.send_after(self(), :refresh, time_in_milliseconds)
 
     {:noreply, state}
   end
@@ -267,11 +267,6 @@ defmodule Goth do
     time_in_seconds = max(token.expires - System.system_time(:second) - state.refresh_before, 0)
 
     Process.send_after(self(), :refresh, time_in_seconds * 1000)
-  end
-
-  defp get_retry_delay(state) do
-    fun = Map.get(state, :retry_delay, &exp_backoff/1)
-    fun.(state.retries)
   end
 
   defp exp_backoff(retry_count) do
