@@ -20,7 +20,10 @@ defmodule Goth.Mixfile do
         extras: ["README.md", "CHANGELOG.md", "UPGRADE_GUIDE.md"]
       ],
       deps: deps(),
-      aliases: aliases()
+      aliases: aliases(),
+      preferred_cli_env: [
+        "test.all": :test
+      ]
     ]
   end
 
