@@ -5,5 +5,4 @@
 erl_crash.dump
 *.ez
 /config/*credentials*
-/config/gcloud
 .elixir_ls/
