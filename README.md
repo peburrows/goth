@@ -12,13 +12,12 @@ A simple library to generate and retrieve OAuth2 tokens for use with Google Clou
 
 **Note:** below are instructions for using Goth v1.3+. For more information on earlier versions of Goth, [see v1.2.0 documentation on hexdocs.pm](https://hexdocs.pm/goth/1.2.0).
 
-1. Add `:goth` to your list of dependencies in `mix.exs`. To use the built-in, Finch-based HTTP
-   client adapter, add `:finch` too:
+1. Add `:goth` to your list of dependencies in `mix.exs`.
 
    ```elixir
    def deps do
      [
-       {:goth, "~> 1.3-rc"}
+       {:goth, "~> 1.3"}
      ]
    end
    ```
@@ -31,7 +30,7 @@ A simple library to generate and retrieve OAuth2 tokens for use with Google Clou
 
      def start(_type, _args) do
        credentials = "GOOGLE_APPLICATION_CREDENTIALS_JSON" |> System.fetch_env!() |> Jason.decode!()
-       source = {:service_account, credentials, []}
+       source = {:service_account, credentials}
 
        children = [
          {Goth, name: MyApp.Goth, source: source}
@@ -42,27 +41,37 @@ A simple library to generate and retrieve OAuth2 tokens for use with Google Clou
    end
    ```
 
-   ...or use multiple credentials:
+   If you set `GOOGLE_APPLICATION_CREDENTIALS` or `GOOGLE_APPLICATION_CREDENTIALS_JSON`, have a
+   `~/.config/gcloud/application_default_credentials.json` file, or deploy your application to
+   Google Cloud, you can omit the `:source` option:
 
    ```elixir
-   defmodule MyApp.Application do
-     use Application
+   def start(_type, _args) do
+     children = [
+       {Goth, name: MyApp.Goth}
+     ]
 
-     def start(_type, _args) do
-       Supervisor.start_link(load_credentials(), strategy: :one_for_one)
+     Supervisor.start_link(children, strategy: :one_for_one)
+   end
+   ```
+
+   If you want to use multiple credentials, you may consider doing:
+
+   ```elixir
+   def start(_type, _args) do
+     Supervisor.start_link(servers(), strategy: :one_for_one)
+   end
+
+   defp servers do
+     servers = [
+       {MyApp.Cred1, source1},
+       ...
+       {MyApp.CredN, source2}
+     ]
+
+     for {name, source} <- servers do
+       Supervisor.child_spec({Goth, name: name, source: source}, id: name)
      end
-
-     defp load_credentials do
-       [
-         {MyApp.Cred1, "CREDENTIALS_JSON_1"},
-         ...
-         {MyApp.CredN, "CREDENTIALS_JSON_N"}
-       ]
-       |> Enum.map(fn {id, env_var} ->
-         credentials = env_var |> System.fetch_env!() |> Jason.decode!()
-         source = {:service_account, credentials, []}
-         Supervisor.child_spec({Goth, name: id, source: source}, id: id)
-       end)
    end
    ```
 
