@@ -12,7 +12,7 @@ defmodule Goth do
   alias Goth.Token
 
   @registry Goth.Registry
-  @max_retries 20
+  @max_retries 10
   @refresh_before_minutes 5
 
   @doc """
@@ -67,11 +67,11 @@ defmodule Goth do
       (that is, the server doesn't start until an attempt to fetch the token was made). Defaults
       to `:async`.
 
-    * `:max_retries` - the maximum number of retries (default: `20`)
+    * `:max_retries` - the maximum number of retries (default: `#{@max_retries}`)
 
     * `:retry_delay` - a function that receives the retry count (starting at 0) and returns the delay, the
       number of milliseconds to sleep before making another attempt.
-      Defaults to a simple exponential backoff: 1s, 2s, 4s, 8s, ...
+      Defaults to a simple exponential backoff capped at 30s: 1s, 2s, 4s, 8s, 16s, 30s, 30s, ...
 
   ## Examples
 
@@ -270,8 +270,7 @@ defmodule Goth do
   end
 
   defp exp_backoff(retry_count) do
-    delay = :math.pow(2, retry_count) |> round()
-    delay * 1000
+    min(30, round(:math.pow(2, retry_count))) * 1000
   end
 
   defp put(name, token) do
