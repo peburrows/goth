@@ -199,26 +199,28 @@ defmodule Goth.Config do
            System.get_env("GCLOUD_PROJECT") || System.get_env("DEVSHELL_PROJECT_ID") ||
            config["project_id"] || config["quota_project_id"] do
       nil ->
-        try do
-          Goth.Client.retrieve_metadata_project()
-        rescue
-          e ->
-            if Map.get(e, :reason) == :nxdomain do
-              Logger.error("""
-              Failed to retrieve project data from GCE internal metadata service.
-              Either you haven't configured your GCP credentials, you aren't running on GCE, or both.
-              Please see README.md for instructions on configuring your credentials.\
-              """)
-            else
-              Logger.error(Exception.message(e))
-            end
-
-            reraise e, __STACKTRACE__
-        end
+        project_id_from_metadata()
 
       project_id ->
         project_id
     end
+  end
+
+  defp project_id_from_metadata do
+    Goth.Client.retrieve_metadata_project()
+  rescue
+    e ->
+      if Map.get(e, :reason) == :nxdomain do
+        Logger.error("""
+        Failed to retrieve project data from GCE internal metadata service.
+        Either you haven't configured your GCP credentials, you aren't running on GCE, or both.
+        Please see README.md for instructions on configuring your credentials.\
+        """)
+      else
+        Logger.error(Exception.message(e))
+      end
+
+      reraise e, __STACKTRACE__
   end
 
   # Decodes JSON (if configured) and sets oauth token source
