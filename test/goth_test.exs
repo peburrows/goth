@@ -315,6 +315,39 @@ defmodule GothTest do
     assert_receive :pong, 1000
   end
 
+  test "force refresh if token is expired", %{test: test} do
+    pid = self()
+    bypass = Bypass.open()
+
+    {:ok, agent} =
+      Agent.start_link(fn ->
+        [
+          {200, ~s|{"access_token":#{System.unique_integer()},"expires_in":-1,"token_type":"Bearer"}|},
+          {200, ~s|{"access_token":42,"expires_in":3599,"token_type":"Bearer"}|}
+        ]
+      end)
+
+    Bypass.expect(bypass, fn conn ->
+      send(pid, :pong)
+      {status, body} = Agent.get_and_update(agent, fn [head | rest] -> {head, rest} end)
+      Plug.Conn.resp(conn, status, body)
+    end)
+
+    config = [
+      name: test,
+      source: {:service_account, random_service_account_credentials(), url: "http://localhost:#{bypass.port}"},
+      max_retries: 0,
+      refresh_before: 1,
+      refresh_before: -100
+    ]
+
+    start_supervised!({Goth, config})
+
+    assert_receive :pong, 1000
+    assert {:ok, %Goth.Token{token: 42}} = Goth.fetch(test)
+    assert_receive :pong, 1000
+  end
+
   defp random_service_account_credentials do
     %{
       "private_key" => random_private_key(),
