@@ -159,7 +159,10 @@ defmodule Goth do
   ]
 
   defp read_from_ets(name) do
+    now = System.system_time(:second)
+
     case Registry.lookup(@registry, name) do
+      [{_pid, %Token{expires: expires}}] when expires <= now -> nil
       [{_pid, %Token{} = token}] -> {:ok, token}
       _ -> nil
     end
