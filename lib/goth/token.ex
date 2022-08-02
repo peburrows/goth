@@ -199,7 +199,7 @@ defmodule Goth.Token do
 
   #### Retrieve the token using the Google metadata server:
 
-      iex> Goth.Token.fetch(source: :metadata})
+      iex> Goth.Token.fetch(source: :metadata)
       {:ok, %Goth.Token{...}}
 
   See [Storing and retrieving instance metadata](https://cloud.google.com/compute/docs/storing-retrieving-metadata)
@@ -319,7 +319,7 @@ defmodule Goth.Token do
   end
 
   defp request(%{source: :metadata} = config) do
-    %{config | source: {:metadata, []}}
+    request(%{config | source: {:metadata, []}})
   end
 
   defp request(%{source: {:metadata, options}} = config) when is_list(options) do
