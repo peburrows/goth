@@ -1,8 +1,8 @@
 defmodule Goth do
   @external_resource "README.md"
-  @moduledoc File.read!("README.md")
-             |> String.split("<!-- MDOC -->")
-             |> Enum.fetch!(1)
+  @moduledoc """
+  A Goth token server.
+  """
 
   use GenServer
 
