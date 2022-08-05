@@ -2,9 +2,8 @@
 
 ![CI](https://github.com/peburrows/goth/workflows/CI/badge.svg)
 
-<!-- MDOC -->
 
-__Go__ogle + Au__th__ = Goth
+Google + Auth = Goth
 
 A simple library to generate and retrieve OAuth2 tokens for use with Google
 Cloud Service accounts.
@@ -35,6 +34,7 @@ earlier versions of Goth, [see v1.2.0 documentation on hexdocs.pm](https://hexdo
          "GOOGLE_APPLICATION_CREDENTIALS_JSON"
          |> System.fetch_env!()
          |> Jason.decode!()
+
        source = {:service_account, credentials}
 
        children = [
@@ -95,7 +95,6 @@ earlier versions of Goth, [see v1.2.0 documentation on hexdocs.pm](https://hexdo
 
 See `Goth.start_link/1` for more information about possible configuration options.
 
-<!-- MDOC -->
 
 ## Upgrading from Goth 1.2
 
