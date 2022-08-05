@@ -1,9 +1,8 @@
-## Upgrading from Goth 1.2
+# Upgrading from Goth 1.2
 
-Earlier versions of Goth relied on global application environment configuration which is deprecated
-in favour of a more direct and explicit approach in Goth v1.3+. Previously, Goth depended on on
-the HTTPoison HTTP client, but now it has an _optional_ dependency on Hackney. Thus, new projects
-using Goth and wanting to use Hackney will need to explicitly include it in the dependencies.
+Earlier versions of Goth relied on global application environment configuration
+which is deprecated in favour of a more direct and explicit approach in Goth
+v1.3+.
 
 Below is a step-by-step upgrade path from Goth 1.x to 1.3:
 

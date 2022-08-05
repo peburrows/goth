@@ -14,11 +14,7 @@ defmodule Goth.Mixfile do
       source_url: @source_url,
       name: "Goth",
       description: description(),
-      docs: [
-        source_ref: "v#{@version}",
-        main: "readme",
-        extras: ["README.md", "CHANGELOG.md", "UPGRADE_GUIDE.md"]
-      ],
+      docs: docs(),
       deps: deps(),
       aliases: aliases(),
       preferred_cli_env: [
@@ -32,6 +28,10 @@ defmodule Goth.Mixfile do
       mod: {Goth.Application, []},
       extra_applications: [:logger]
     ]
+  end
+
+  def aliases do
+    ["test.all": ["test --include integration"]]
   end
 
   defp elixirc_paths(:test), do: ["lib", "test/support"]
@@ -49,8 +49,19 @@ defmodule Goth.Mixfile do
     ]
   end
 
-  def aliases do
-    ["test.all": ["test --include integration"]]
+  defp docs do
+    [
+      source_ref: "v#{@version}",
+      main: "readme",
+      extras: [
+        "CHANGELOG.md",
+        "README.md",
+        "UPGRADE_GUIDE.md",
+        "LICENSE.md"
+      ],
+      formatters: ["html"],
+      skip_undefined_reference_warnings_on: ["CHANGELOG.md"]
+    ]
   end
 
   defp description do
@@ -63,7 +74,10 @@ defmodule Goth.Mixfile do
     [
       maintainers: ["Phil Burrows"],
       licenses: ["MIT"],
-      links: %{"GitHub" => @source_url}
+      links: %{
+        "Changelog" => "#{@source_url}/blob/master/CHANGELOG.md",
+        "GitHub" => @source_url
+      }
     ]
   end
 end

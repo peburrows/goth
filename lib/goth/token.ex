@@ -56,14 +56,14 @@ defmodule Goth.Token do
 
       See "Source" section below for more information.
 
-    * `:http_client` - a funtion that makes the HTTP request.
+    * `:http_client` - a function that makes the HTTP request.
 
       Can be one of the following:
 
         * `fun` - same as `{fun, []}`
 
-        * `{fun, opts}` - `fun` must be a 1-arity funtion that receives a keyword list with fields
-          `:method`, `:url`, `:headers`, and `:body` along with any passed `opts`. The funtion must return
+        * `{fun, opts}` - `fun` must be a 1-arity function that receives a keyword list with fields
+          `:method`, `:url`, `:headers`, and `:body` along with any passed `opts`. The function must return
           `{:ok, %{status: status, headers: headers, body: body}}` or `{:error, exception}`.
 
           See "Custom HTTP Client" section below for more information.
@@ -136,7 +136,7 @@ defmodule Goth.Token do
   ## Custom HTTP Client
 
   To use a custom HTTP client, define a function that receives a keyword list with fields
-  `:method`, `:url`, `:headers`, and `:body`. The funtion must return
+  `:method`, `:url`, `:headers`, and `:body`. The function must return
   `{:ok, %{status: status, headers: headers, body: body}}` or `{:error, exception}`.
 
   Here's an example with Finch:

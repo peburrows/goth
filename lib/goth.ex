@@ -1,6 +1,4 @@
 defmodule Goth do
-  @external_resource "README.md"
-
   @moduledoc """
   A Goth token server.
   """
