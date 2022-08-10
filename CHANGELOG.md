@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.3.1 (2022-08-10)
+
+  * Force refresh whenever cached token is expired
+  * Fix getting tokens from metadata with no options provide
+
 ## v1.3.0 (2022-06-29)
 
   * Add `Goth.start_link/1`, `Goth.fetch/2`, `Goth.fetch!/2`, and `Goth.Token.fetch/1`.
