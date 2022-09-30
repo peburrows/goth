@@ -26,6 +26,8 @@ defmodule Goth.Config do
     end
   end
 
+  @configuration_file "configurations/config_default"
+  @credentials_file "application_default_credentials.json"
   @optional_callbacks init: 1
 
   @doc """
@@ -69,6 +71,20 @@ defmodule Goth.Config do
     end
   end
 
+  defp get_configuration_path(nil) do
+    case :os.type() do
+      {:win32, _} ->
+        config_dir = System.get_env("APPDATA") || ""
+        Path.join([config_dir, "gcloud"])
+
+      {:unix, _} ->
+        home_dir = System.get_env("HOME") || ""
+        Path.join([home_dir, ".config/gcloud"])
+    end
+  end
+
+  defp get_configuration_path(config_root_dir), do: config_root_dir
+
   # We have been configured as `disabled` so just start with an empty configuration
   defp load_and_init({true, _config}) do
     {:ok, %{}}
@@ -87,7 +103,7 @@ defmodule Goth.Config do
       config
       |> map_config()
       |> Enum.map(fn {account, config} ->
-        actor_email = Keyword.get(app_config, :actor_email)
+        actor_email = Keyword.get(app_config, :actor_email) || Map.get(config, :actor_email)
         project_id = determine_project_id(config, app_config)
 
         {
@@ -167,26 +183,35 @@ defmodule Goth.Config do
     # config_root_dir = Application.get_env(:goth, :config_root_dir)
     config_root_dir = Keyword.get(config, :config_root_dir)
 
-    path_root =
-      if config_root_dir == nil do
-        case :os.type() do
-          {:win32, _} ->
-            System.get_env("APPDATA") || ""
+    path_root = get_configuration_path(config_root_dir)
 
-          {:unix, _} ->
-            home_dir = System.get_env("HOME") || ""
-            Path.join([home_dir, ".config"])
-        end
-      else
-        config_root_dir
-      end
+    credential_data =
+      Path.join([path_root, @credentials_file])
+      |> get_credential_data()
 
-    path = Path.join([path_root, "gcloud", "application_default_credentials.json"])
+    configuration_data =
+      Path.join([path_root, @configuration_file])
+      |> get_configuration_data()
 
-    if File.regular?(path) do
-      path |> File.read!() |> decode_json()
+    Map.merge(credential_data, configuration_data)
+  end
+
+  defp get_credential_data(credential_file) do
+    if File.regular?(credential_file) do
+      credential_file |> File.read!() |> decode_json()
     else
-      nil
+      %{}
+    end
+  end
+
+  defp get_configuration_data(configuration_file) do
+    if File.regular?(configuration_file) do
+      configuration_data = configuration_file |> File.read!() |> decode_toml()
+
+      # Only retrieve the required data.
+      %{project_id: configuration_data["core"]["project"], actor_email: configuration_data["core"]["account"]}
+    else
+      %{}
     end
   end
 
@@ -195,9 +220,9 @@ defmodule Goth.Config do
   end
 
   defp determine_project_id(config, dynamic_config) do
-    case Keyword.get(dynamic_config, :project_id) || System.get_env("GOOGLE_CLOUD_PROJECT") ||
-           System.get_env("GCLOUD_PROJECT") || System.get_env("DEVSHELL_PROJECT_ID") ||
-           config["project_id"] || config["quota_project_id"] do
+    case Keyword.get(dynamic_config, :project_id) || Map.get(config, :project_id) ||
+           System.get_env("GOOGLE_CLOUD_PROJECT") || System.get_env("GCLOUD_PROJECT") ||
+           System.get_env("DEVSHELL_PROJECT_ID") || config["project_id"] || config["quota_project_id"] do
       nil ->
         project_id_from_metadata()
 
@@ -228,6 +253,20 @@ defmodule Goth.Config do
     json
     |> Jason.decode!()
     |> set_token_source
+  end
+
+  defp decode_toml(toml) do
+    String.split(toml, "\n", trim: true)
+    |> Enum.reduce(%{current_header: ""}, fn line, accumulator ->
+      if String.match?(line, ~r/^\[.+\]$/) do
+        [_original, header] = Regex.run(~r/^\[(.+)\]$/, line)
+        %{accumulator | current_header: header}
+      else
+        [key, value] = String.split(line, " = ", trim: true)
+        Map.update(accumulator, accumulator[:current_header], %{key => value}, &Map.put(&1, key, value))
+      end
+    end)
+    |> Map.delete(:current_header)
   end
 
   defp set_token_source(%{"private_key" => _} = map) do
