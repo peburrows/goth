@@ -103,7 +103,7 @@ defmodule Goth.Config do
       config
       |> map_config()
       |> Enum.map(fn {account, config} ->
-        actor_email = Keyword.get(app_config, :actor_email) || Map.get(config, :actor_email)
+        actor_email = Keyword.get(app_config, :actor_email) || Map.get(config, "actor_email")
         project_id = determine_project_id(config, app_config)
 
         {
@@ -180,7 +180,6 @@ defmodule Goth.Config do
   # Search the well-known path for application default credentials provided
   # by the gcloud sdk. Note there are different paths for unix and windows.
   defp from_gcloud_adc(config) do
-    # config_root_dir = Application.get_env(:goth, :config_root_dir)
     config_root_dir = Keyword.get(config, :config_root_dir)
 
     path_root = get_configuration_path(config_root_dir)
@@ -204,12 +203,12 @@ defmodule Goth.Config do
     end
   end
 
-  defp get_configuration_data(configuration_file) do
+  def get_configuration_data(configuration_file) do
     if File.regular?(configuration_file) do
-      configuration_data = configuration_file |> File.read!() |> decode_toml()
+      configuration_data = configuration_file |> File.read!() |> decode_ini()
 
       # Only retrieve the required data.
-      %{project_id: configuration_data["core"]["project"], actor_email: configuration_data["core"]["account"]}
+      %{"project_id" => configuration_data["core"]["project"], "actor_email" => configuration_data["core"]["account"]}
     else
       %{}
     end
@@ -220,9 +219,9 @@ defmodule Goth.Config do
   end
 
   defp determine_project_id(config, dynamic_config) do
-    case Keyword.get(dynamic_config, :project_id) || Map.get(config, :project_id) ||
-           System.get_env("GOOGLE_CLOUD_PROJECT") || System.get_env("GCLOUD_PROJECT") ||
-           System.get_env("DEVSHELL_PROJECT_ID") || config["project_id"] || config["quota_project_id"] do
+    case Keyword.get(dynamic_config, :project_id) || System.get_env("GOOGLE_CLOUD_PROJECT") ||
+           System.get_env("GCLOUD_PROJECT") || System.get_env("DEVSHELL_PROJECT_ID") ||
+           config["project_id"] || config["quota_project_id"] do
       nil ->
         project_id_from_metadata()
 
@@ -255,8 +254,8 @@ defmodule Goth.Config do
     |> set_token_source
   end
 
-  defp decode_toml(toml) do
-    String.split(toml, "\n", trim: true)
+  defp decode_ini(contents) do
+    String.split(contents, "\n", trim: true)
     |> Enum.reduce(%{current_header: ""}, fn line, accumulator ->
       if String.match?(line, ~r/^\[.+\]$/) do
         [_original, header] = Regex.run(~r/^\[(.+)\]$/, line)
