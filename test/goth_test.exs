@@ -101,7 +101,7 @@ defmodule GothTest do
     current_json = Application.get_env(:goth, :json)
     root_dir = Application.get_env(:goth, :config_root_dir)
     Application.put_env(:goth, :json, nil, persistent: true)
-    Application.put_env(:goth, :config_root_dir, "test/data/home", persistent: true)
+    Application.put_env(:goth, :config_root_dir, "test/data/home/gcloud", persistent: true)
     Application.stop(:goth)
     Application.start(:goth)
 

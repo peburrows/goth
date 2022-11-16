@@ -221,7 +221,7 @@ defmodule Goth.ConfigTest do
     current_json = Application.get_env(:goth, :json)
     current_home = Application.get_env(:goth, :config_root_dir)
     Application.put_env(:goth, :json, nil, persistent: true)
-    Application.put_env(:goth, :config_root_dir, "test/data/home", persistent: true)
+    Application.put_env(:goth, :config_root_dir, "test/data/home/gcloud", persistent: true)
     Application.stop(:goth)
 
     # Fake project response because the ADC doesn't embed a project.
