@@ -49,7 +49,7 @@ earlier versions of Goth, [see v1.2.0 documentation on hexdocs.pm](https://hexdo
    If you set `GOOGLE_APPLICATION_CREDENTIALS` or
    `GOOGLE_APPLICATION_CREDENTIALS_JSON`, have a
    `~/.config/gcloud/application_default_credentials.json` file,
-   ~/.config/gcloud/configurations/config_default` file or deploy
+   `~/.config/gcloud/configurations/config_default` file or deploy
    your application to Google Cloud, you can omit the `:source` option:
 
    ```elixir
