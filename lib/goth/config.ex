@@ -192,14 +192,26 @@ defmodule Goth.Config do
       Path.join([path_root, @configuration_file])
       |> get_configuration_data()
 
-    Map.merge(credential_data, configuration_data)
+    cond do
+      configuration_data && credential_data ->
+        Map.merge(credential_data, configuration_data)
+
+      configuration_data ->
+        configuration_data
+
+      credential_data ->
+        credential_data
+
+      true ->
+        nil
+    end
   end
 
   defp get_credential_data(credential_file) do
     if File.regular?(credential_file) do
       credential_file |> File.read!() |> decode_json()
     else
-      %{}
+      nil
     end
   end
 
@@ -210,7 +222,7 @@ defmodule Goth.Config do
       # Only retrieve the required data.
       %{"project_id" => configuration_data["core"]["project"], "actor_email" => configuration_data["core"]["account"]}
     else
-      %{}
+      nil
     end
   end
 
