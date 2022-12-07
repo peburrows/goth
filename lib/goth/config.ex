@@ -85,6 +85,14 @@ defmodule Goth.Config do
 
   defp get_configuration_path(config_root_dir), do: config_root_dir
 
+  defp get_configuration_file(nil), do: @configuration_file
+
+  defp get_configuration_file(configuration_file), do: configuration_file
+
+  defp get_credentials_file(nil), do: @credentials_file
+
+  defp get_credentials_file(credentials_file), do: credentials_file
+
   # We have been configured as `disabled` so just start with an empty configuration
   defp load_and_init({true, _config}) do
     {:ok, %{}}
@@ -182,14 +190,22 @@ defmodule Goth.Config do
   defp from_gcloud_adc(config) do
     config_root_dir = Keyword.get(config, :config_root_dir)
 
-    path_root = get_configuration_path(config_root_dir)
+    path_root = get_configuration_path(config_root_dir) <> "/gcloud/"
+
+    credentials_file =
+      Keyword.get(config, :credentials_file)
+      |> get_credentials_file()
 
     credential_data =
-      Path.join([path_root, @credentials_file])
+      Path.join([path_root, credentials_file])
       |> get_credential_data()
 
+    configuration_file =
+      Keyword.get(config, :configuration_file)
+      |> get_configuration_file()
+
     configuration_data =
-      Path.join([path_root, @configuration_file])
+      Path.join([path_root, configuration_file])
       |> get_configuration_data()
 
     cond do
