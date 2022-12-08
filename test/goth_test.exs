@@ -140,6 +140,8 @@ defmodule GothTest do
     System.put_env("GOOGLE_CLOUD_PROJECT", "test-project")
     all_env = Application.get_all_env(:goth)
     Application.put_all_env([goth: [json: nil, config_root_dir: nil]], persistent: true)
+    # Ensure the config root directory does not point to a SDK file.
+    Application.put_env(:goth, :config_root_dir, "/test/data/home", persistent: true)
     Application.stop(:goth)
     Application.start(:goth)
 

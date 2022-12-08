@@ -190,7 +190,7 @@ defmodule Goth.Config do
   defp from_gcloud_adc(config) do
     config_root_dir = Keyword.get(config, :config_root_dir)
 
-    path_root = get_configuration_path(config_root_dir) <> "/gcloud/"
+    path_root = get_configuration_path(config_root_dir)
 
     credentials_file =
       Keyword.get(config, :credentials_file)

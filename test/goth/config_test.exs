@@ -127,7 +127,7 @@ defmodule Goth.ConfigTest do
 
     current_config_root = Application.get_env(:goth, :config_root_dir)
 
-    config_root = Path.expand("test/data/home")
+    config_root = Path.expand("test/data/home/gcloud")
     Application.put_env(:goth, :config_root_dir, config_root)
 
     Application.stop(:goth)
@@ -221,8 +221,9 @@ defmodule Goth.ConfigTest do
     current_json = Application.get_env(:goth, :json)
     current_home = Application.get_env(:goth, :config_root_dir)
     Application.put_env(:goth, :json, nil, persistent: true)
-    Application.put_env(:goth, :config_root_dir, "test/data/home", persistent: true)
+    Application.put_env(:goth, :config_root_dir, "test/data/home/gcloud", persistent: true)
     # Use a bad path to the SDK files to force gcloud credentials.
+    # If the configuration file is found, a request won't be sent to get the project id.
     Application.put_env(:goth, :configuration_file, "test/data/goth", persistent: true)
 
     Application.stop(:goth)
