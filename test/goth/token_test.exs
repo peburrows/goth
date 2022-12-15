@@ -172,6 +172,25 @@ defmodule Goth.TokenTest do
     assert token.scope == "dummy_scope"
   end
 
+  test "fetch/1 with client credentials" do
+    bypass = Bypass.open()
+
+    Bypass.expect(bypass, fn conn ->
+      body = ~s|{"access_token":"dummy","scope":"dummy_scope","expires_in":3599,"token_type":"Bearer"}|
+
+      Plug.Conn.resp(conn, 200, body)
+    end)
+
+    config = %{
+      source:
+        {:client_credentials, %{"client_id" => "aaa", "client_secret" => "bbb"}, url: "http://localhost:#{bypass.port}"}
+    }
+
+    {:ok, token} = Goth.Token.fetch(config)
+    assert token.token == "dummy"
+    assert token.scope == "dummy_scope"
+  end
+
   test "fetch/1 from instance metadata" do
     bypass = Bypass.open()
 

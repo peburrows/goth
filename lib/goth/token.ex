@@ -24,6 +24,7 @@ defmodule Goth.Token do
 
   @default_url "https://www.googleapis.com/oauth2/v4/token"
   @default_scopes ["https://www.googleapis.com/auth/cloud-platform"]
+  @default_huawei_url "https://oauth-login.cloud.huawei.com/oauth2/v3/token"
 
   @doc """
   Fetch the token from the Google API using the given `config`.
@@ -37,6 +38,9 @@ defmodule Goth.Token do
         * `{:service_account, credentials}` - for fetching token using service account credentials
 
         * `{:refresh_token, credentials}` - for fetching token using refresh token
+
+        * `{:client_credentials, credentials}` - for fetching token using service account credentials
+           This is the format for HUAWEI.
 
         * `:metadata` - for fetching token using Google internal metadata service
 
@@ -117,6 +121,22 @@ defmodule Goth.Token do
 
     * `:url` - the URL of the authentication service, defaults to:
       `"https://www.googleapis.com/oauth2/v4/token"`
+
+  #### Client credentials - `{:client_credentials, credentials}`
+
+  The `credentials` is a map and can contain the following keys:
+
+    * `"client_id"`
+
+    * `"client_secret"`
+
+  The `options` is a keywords list and can contain the following keys:
+
+    * `:url` - the URL of the authentication service, defaults to:
+      `"https://oauth-login.cloud.huawei.com/oauth2/v3/token"`
+
+  See https://developer.huawei.com/consumer/en/doc/development/HMSCore-Guides/oauth2-0000001212610981
+  for more information.
 
   #### Google metadata server - `:metadata`
 
@@ -310,6 +330,28 @@ defmodule Goth.Token do
       URI.encode_query(
         grant_type: "refresh_token",
         refresh_token: refresh_token,
+        client_id: client_id,
+        client_secret: client_secret
+      )
+
+    response = request(config.http_client, method: :post, url: url, headers: headers, body: body)
+    handle_response(response)
+  end
+
+  defp request(%{source: {:client_credentials, credentials}} = config) do
+    request(%{config | source: {:client_credentials, credentials, []}})
+  end
+
+  defp request(%{source: {:client_credentials, credentials, options}} = config)
+       when is_map(credentials) and is_list(options) do
+    url = Keyword.get(options, :url, @default_huawei_url)
+    headers = [{"Content-Type", "application/x-www-form-urlencoded"}]
+    client_id = Map.fetch!(credentials, "client_id")
+    client_secret = Map.fetch!(credentials, "client_secret")
+
+    body =
+      URI.encode_query(
+        grant_type: "client_credentials",
         client_id: client_id,
         client_secret: client_secret
       )
