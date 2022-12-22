@@ -121,6 +121,35 @@ defmodule Goth.ConfigTest do
     Application.start(:goth)
   end
 
+  test "SDK configuration file is read" do
+    current_json = Application.get_env(:goth, :json)
+    Application.put_env(:goth, :json, nil, persistent: true)
+
+    current_config_root = Application.get_env(:goth, :config_root_dir)
+
+    config_root = Path.expand("test/data/home/gcloud")
+    Application.put_env(:goth, :config_root_dir, config_root)
+
+    Application.stop(:goth)
+    Application.start(:goth)
+
+    state =
+      Path.expand("test/data/home/gcloud/configurations/config_default")
+      |> Config.get_configuration_data()
+      |> Config.map_config()
+
+    Enum.each(state, fn {_, config} ->
+      Enum.each(config, fn {key, _} ->
+        assert {:ok, config[key]} == Config.get(key)
+      end)
+    end)
+
+    Application.put_env(:goth, :config_root_dir, current_config_root, persistent: true)
+    Application.put_env(:goth, :json, current_json, persistent: true)
+    Application.stop(:goth)
+    Application.start(:goth)
+  end
+
   test "GOOGLE_APPLICATION_CREDENTIALS is read" do
     # The test configuration sets an example JSON blob. We override it briefly
     # during this test.
@@ -192,11 +221,15 @@ defmodule Goth.ConfigTest do
     current_json = Application.get_env(:goth, :json)
     current_home = Application.get_env(:goth, :config_root_dir)
     Application.put_env(:goth, :json, nil, persistent: true)
-    Application.put_env(:goth, :config_root_dir, "test/data/home", persistent: true)
+    Application.put_env(:goth, :config_root_dir, "test/data/home/gcloud", persistent: true)
+    # Use a bad path to the SDK files to force gcloud credentials.
+    # If the configuration file is found, a request won't be sent to get the project id.
+    Application.put_env(:goth, :configuration_file, "test/data/goth", persistent: true)
+
     Application.stop(:goth)
 
     # Fake project response because the ADC doesn't embed a project.
-    project = "test-project"
+    project = "test_project"
 
     Bypass.expect(bypass, fn conn ->
       uri = "/computeMetadata/v1/project/project-id"
@@ -218,6 +251,7 @@ defmodule Goth.ConfigTest do
     # Restore original config
     Application.put_env(:goth, :json, current_json, persistent: true)
     Application.put_env(:goth, :config_root_dir, current_home, persistent: true)
+    Application.delete_env(:goth, :configuration_file, persistent: true)
     Application.stop(:goth)
     Application.start(:goth)
   end

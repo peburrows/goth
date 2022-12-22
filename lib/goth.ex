@@ -43,6 +43,8 @@ defmodule Goth do
 
         * Check `~/.config/gcloud/application_default_credentials.json` file.
 
+        * Check ~/.config/gcloud/configurations/config_default` for project id and email address for SDK users.
+
         * Check Google internal metadata service
 
         * Otherwise, raise an error.

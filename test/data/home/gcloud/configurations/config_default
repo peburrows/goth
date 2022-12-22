@@ -1,0 +1,8 @@
+[core]
+account = username@domain.com
+project = first_project
+disable_usage_reporting = False
+
+[compute]
+zone = us-central1-c
+region = us-central1
