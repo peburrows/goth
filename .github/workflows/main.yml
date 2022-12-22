@@ -17,7 +17,7 @@ jobs:
         include:
           - pair:
               elixir: "1.10.4"
-              otp: "21.3.8.24"
+              otp: "21.3.8"
           - pair:
               elixir: "1.14.2"
               otp: "25.2"
@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - uses: erlef/setup-elixir@v1
+      - uses: erlef/setup-beam@v1
         with:
           otp-version: ${{matrix.pair.otp}}
           elixir-version: ${{matrix.pair.elixir}}
