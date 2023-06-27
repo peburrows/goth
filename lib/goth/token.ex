@@ -382,7 +382,7 @@ defmodule Goth.Token do
   defp jwt_encode(claims, %{"private_key" => private_key, "client_email" => client_email}) do
     jwk = JOSE.JWK.from_pem(private_key)
     header = %{"alg" => "RS256", "typ" => "JWT"}
-    unix_time = System.system_time(:second)
+    unix_time = System.os_time(:second)
 
     default_claims = %{
       "iss" => client_email,
