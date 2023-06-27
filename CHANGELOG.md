@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.4.1 (2023-06-27)
+
+  * change to OS time to prevent unmanagable clock skew
+
 ## v1.4.0 (2023-03-23)
 
   * Load config from `~/.config/gcloud/configurations/config_default`
