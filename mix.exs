@@ -39,7 +39,7 @@ defmodule Goth.Mixfile do
 
   defp deps do
     [
-      {:jose, "~> 1.11.6"},
+      {:jose, "~> 1.11"},
       {:jason, "~> 1.1"},
       {:finch, "~> 0.9"},
       {:bypass, "~> 2.1", only: :test},
