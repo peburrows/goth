@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.4.2 (2023-08-24)
+
+  * Update jose dependency
+  * Require Elixir 1.11+
+
 ## v1.4.1 (2023-06-27)
 
   * change to OS time to prevent unmanagable clock skew
