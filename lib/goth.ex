@@ -233,7 +233,7 @@ defmodule Goth do
   end
 
   defp start_http_client({module, _} = config) when is_atom(module) do
-    Logger.warn("Setting http_client: mod | {mod, opts} is deprecated in favour of http_client: fun | {fun, opts}")
+    Logger.warning("Setting http_client: mod | {mod, opts} is deprecated in favour of http_client: fun | {fun, opts}")
 
     Goth.HTTPClient.init(config)
   end
