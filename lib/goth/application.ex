@@ -6,7 +6,7 @@ defmodule Goth.Application do
   def start(_type, _args) do
     children = [
       {Registry, keys: :unique, name: Goth.Registry},
-      {Finch, name: Goth.Finch, pools: %{default: [protocol: :http1]}},
+      {Finch, name: Goth.Finch, pools: %{default: [protocols: [:http1]]}},
       Goth.TokenStore
     ]
 
