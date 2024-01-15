@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.4.3 (2024-01-15)
+
+  * Update Finch to 0.17
+
 ## v1.4.2 (2023-08-24)
 
   * Update jose dependency
