@@ -398,7 +398,7 @@ defmodule Goth.Token do
 
   defp build_token(%{"access_token" => _} = attrs) do
     %__MODULE__{
-      expires: System.system_time(:second) + attrs["expires_in"],
+      expires: System.os_time(:second) + attrs["expires_in"],
       token: attrs["access_token"],
       type: attrs["token_type"],
       scope: attrs["scope"],
