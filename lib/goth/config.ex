@@ -304,6 +304,10 @@ defmodule Goth.Config do
     Map.put(map, "token_source", :oauth_refresh)
   end
 
+  defp set_token_source(%{"type" => "external_account"} = map) do
+    Map.put(map, "token_source", :workload_identity)
+  end
+
   defp set_token_source(list) when is_list(list) do
     Enum.map(list, fn config ->
       set_token_source(config)
