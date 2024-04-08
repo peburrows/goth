@@ -255,6 +255,23 @@ defmodule Goth.Token do
 
       {:ok, :metadata} ->
         request(%{config | source: {:metadata, opts}})
+
+      {:ok, :workload_identity} ->
+        {:ok, url} = Goth.Config.get(:token_url)
+        {:ok, audience} = Goth.Config.get(:audience)
+        {:ok, subject_token_type} = Goth.Config.get(:subject_token_type)
+        {:ok, credential_source} = Goth.Config.get(:credential_source)
+        {:ok, service_account_impersonation_url} = Goth.Config.get(:service_account_impersonation_url)
+
+        credentials = %{
+          "token_url" => url,
+          "audience" => audience,
+          "subject_token_type" => subject_token_type,
+          "credential_source" => credential_source,
+          "service_account_impersonation_url" => service_account_impersonation_url
+        }
+
+        request(%{config | source: {:workload_identity, credentials}})
     end
   end
 
@@ -333,6 +350,31 @@ defmodule Goth.Token do
     end
   end
 
+  defp request(%{source: {:workload_identity, credentials}} = config) do
+    %{
+      "token_url" => token_url,
+      "audience" => audience,
+      "subject_token_type" => subject_token_type,
+      "credential_source" => credential_source
+    } = credentials
+
+    headers = [{"Content-Type", "application/x-www-form-urlencoded"}]
+
+    body =
+      URI.encode_query(%{
+        "audience" => audience,
+        "grant_type" => "urn:ietf:params:oauth:grant-type:token-exchange",
+        "requested_token_type" => "urn:ietf:params:oauth:token-type:access_token",
+        "scope" => "https://www.googleapis.com/auth/cloud-platform",
+        "subject_token_type" => subject_token_type,
+        "subject_token" => subject_token_from_credential_source(credential_source)
+      })
+
+    response = request(config.http_client, method: :post, url: token_url, headers: headers, body: body)
+
+    handle_workload_identity_response(response, config)
+  end
+
   defp metadata_options(options) do
     account = Keyword.get(options, :account, "default")
     audience = Keyword.get(options, :audience, nil)
@@ -348,11 +390,31 @@ defmodule Goth.Token do
     {url, audience}
   end
 
+  defp subject_token_from_credential_source(%{"file" => file, "format" => %{"type" => "text"}}) do
+    File.read!(file)
+  end
+
   defp handle_jwt_response({:ok, %{status: 200, body: body}}) do
     {:ok, build_token(%{"id_token" => body})}
   end
 
   defp handle_jwt_response(response), do: handle_response(response)
+
+  defp handle_workload_identity_response(
+         {:ok, %{status: 200, body: body}},
+         %{source: {:workload_identity, credentials}} = config
+       ) do
+    url = Map.get(credentials, "service_account_impersonation_url")
+    %{"access_token" => token, "token_type" => type} = Jason.decode!(body)
+
+    headers = [{"content-type", "text/json"}, {"Authorization", "#{type} #{token}"}]
+    body = Jason.encode!(%{scope: "https://www.googleapis.com/auth/cloud-platform"})
+    response = request(config.http_client, method: :post, url: url, headers: headers, body: body)
+
+    handle_response(response)
+  end
+
+  defp handle_workload_identity_response(response, _config), do: handle_response(response)
 
   defp handle_response({:ok, %{status: 200, body: body}}) when is_map(body) do
     {:ok, build_token(body)}
@@ -415,6 +477,16 @@ defmodule Goth.Token do
       type: "Bearer",
       scope: fields["aud"],
       sub: fields["sub"]
+    }
+  end
+
+  defp build_token(%{"accessToken" => token, "expireTime" => expire_time}) do
+    {:ok, datetime, 0} = DateTime.from_iso8601(expire_time)
+
+    %__MODULE__{
+      expires: DateTime.to_unix(datetime),
+      token: token,
+      type: "Bearer"
     }
   end
 

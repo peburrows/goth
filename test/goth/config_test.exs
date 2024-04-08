@@ -182,6 +182,40 @@ defmodule Goth.ConfigTest do
     Application.start(:goth)
   end
 
+  test "GOOGLE_APPLICATION_CREDENTIALS is read when workload identity" do
+    # The test configuration sets an example JSON blob. We override it briefly
+    # during this test.
+    current_json = Application.get_env(:goth, :json)
+    Application.put_env(:goth, :json, nil, persistent: true)
+    Application.put_env(:goth, :project_id, "my-project")
+    System.put_env("GOOGLE_APPLICATION_CREDENTIALS", "test/data/test-credentials-workload-identity.json")
+    Application.stop(:goth)
+
+    Application.start(:goth)
+
+    state =
+      "test/data/test-credentials-workload-identity.json"
+      |> Path.expand()
+      |> File.read!()
+      |> Jason.decode!()
+      |> Config.map_config()
+
+    Enum.each(state, fn {_, config} ->
+      Enum.each(config, fn {key, _} ->
+        assert {:ok, config[key]} == Config.get(key)
+      end)
+    end)
+
+    assert {:ok, :workload_identity} == Config.get(:token_source)
+
+    # Restore original config
+    Application.put_env(:goth, :json, current_json, persistent: true)
+    Application.put_env(:goth, :project_id, nil)
+    System.delete_env("GOOGLE_APPLICATION_CREDENTIALS")
+    Application.stop(:goth)
+    Application.start(:goth)
+  end
+
   test "multiple credentials are parsed correctly" do
     # The test configuration sets an example JSON blob. We override it briefly
     # during this test.

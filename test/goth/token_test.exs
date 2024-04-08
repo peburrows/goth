@@ -191,6 +191,43 @@ defmodule Goth.TokenTest do
     assert token.scope == nil
   end
 
+  test "fetch/1 from workload identity" do
+    token_bypass = Bypass.open()
+    sa_token_bypass = Bypass.open()
+
+    Bypass.expect(token_bypass, fn conn ->
+      assert conn.request_path == "/v1/token"
+
+      body = ~s|{"access_token":"dummy","expires_in":3599,"token_type":"Bearer"}|
+      Plug.Conn.resp(conn, 200, body)
+    end)
+
+    Bypass.expect(sa_token_bypass, fn conn ->
+      assert conn.request_path ==
+               "/v1/projects/-/serviceAccounts/test-credentials-workload-identity@my-project.iam.gserviceaccount.com:generateAccessToken"
+
+      body = ~s|{"accessToken":"dummy_sa","expireTime":"2024-06-30T00:00:00Z"}|
+      Plug.Conn.resp(conn, 200, body)
+    end)
+
+    credentials =
+      File.read!("test/data/test-credentials-workload-identity.json")
+      |> Jason.decode!()
+      |> Map.put("token_url", "http://localhost:#{token_bypass.port}/v1/token")
+      |> Map.put(
+        "service_account_impersonation_url",
+        "http://localhost:#{sa_token_bypass.port}/v1/projects/-/serviceAccounts/test-credentials-workload-identity@my-project.iam.gserviceaccount.com:generateAccessToken"
+      )
+
+    config = %{
+      source: {:workload_identity, credentials}
+    }
+
+    {:ok, token} = Goth.Token.fetch(config)
+    assert token.token == "dummy_sa"
+    assert token.scope == nil
+  end
+
   defp random_service_account_credentials do
     %{
       "private_key" => random_private_key(),
