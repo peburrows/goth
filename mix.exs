@@ -10,7 +10,7 @@ defmodule Goth.Mixfile do
       version: @version,
       package: package(),
       elixirc_paths: elixirc_paths(Mix.env()),
-      elixir: "~> 1.11",
+      elixir: "~> 1.12",
       source_url: @source_url,
       name: "Goth",
       description: description(),
