@@ -390,7 +390,20 @@ defmodule Goth.Token do
     {url, audience}
   end
 
-  defp subject_token_from_credential_source(%{"file" => file, "format" => %{"type" => "text"}}) do
+  defp subject_token_from_credential_source(%{"file" => file, "format" => format}) do
+    binary = File.read!(file)
+
+    case format do
+      %{"type" => "text"} ->
+        binary
+
+      %{"type" => "json", "subject_token_field_name" => field} ->
+        binary |> Jason.decode!() |> Map.fetch!(field)
+    end
+  end
+
+  # the default file type if not specified is "text"
+  defp subject_token_from_credential_source(%{"file" => file}) do
     File.read!(file)
   end
 
