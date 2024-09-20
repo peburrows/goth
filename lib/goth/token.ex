@@ -402,9 +402,8 @@ defmodule Goth.Token do
 
   defp handle_workload_identity_response(
          {:ok, %{status: 200, body: body}},
-         %{source: {:workload_identity, credentials}} = config
+         %{source: {:workload_identity, %{"service_account_impersonation_url" => url}}} = config
        ) do
-    url = Map.get(credentials, "service_account_impersonation_url")
     %{"access_token" => token, "token_type" => type} = Jason.decode!(body)
 
     headers = [{"content-type", "text/json"}, {"Authorization", "#{type} #{token}"}]
