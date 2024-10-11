@@ -18,7 +18,7 @@ earlier versions of Goth, [see v1.2.0 documentation on hexdocs.pm](https://hexdo
    ```elixir
    def deps do
      [
-       {:goth, "~> 1.3"}
+       {:goth, "~> 1.4"}
      ]
    end
    ```
