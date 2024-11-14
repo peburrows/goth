@@ -271,7 +271,7 @@ defmodule Goth.Token do
           "service_account_impersonation_url" => service_account_impersonation_url
         }
 
-        request(%{config | source: {:workload_identity, credentials}})
+        request(%{config | source: {:workload_identity, credentials, opts}})
     end
   end
 
@@ -351,6 +351,11 @@ defmodule Goth.Token do
   end
 
   defp request(%{source: {:workload_identity, credentials}} = config) do
+    request(%{config | source: {:workload_identity, credentials, []}})
+  end
+
+  defp request(%{source: {:workload_identity, credentials, options}} = config)
+       when is_map(credentials) and is_list(options) do
     %{
       "token_url" => token_url,
       "audience" => audience,
@@ -365,7 +370,7 @@ defmodule Goth.Token do
         "audience" => audience,
         "grant_type" => "urn:ietf:params:oauth:grant-type:token-exchange",
         "requested_token_type" => "urn:ietf:params:oauth:token-type:access_token",
-        "scope" => "https://www.googleapis.com/auth/cloud-platform",
+        "scope" => List.first(@default_scopes),
         "subject_token_type" => subject_token_type,
         "subject_token" => subject_token_from_credential_source(credential_source)
       })
@@ -415,12 +420,12 @@ defmodule Goth.Token do
 
   defp handle_workload_identity_response(
          {:ok, %{status: 200, body: body}},
-         %{source: {:workload_identity, %{"service_account_impersonation_url" => url}}} = config
+         %{source: {:workload_identity, %{"service_account_impersonation_url" => url}, options}} = config
        ) do
     %{"access_token" => token, "token_type" => type} = Jason.decode!(body)
 
     headers = [{"content-type", "text/json"}, {"Authorization", "#{type} #{token}"}]
-    body = Jason.encode!(%{scope: "https://www.googleapis.com/auth/cloud-platform"})
+    body = Jason.encode!(%{scope: Keyword.get(options, :scopes, @default_scopes)})
     response = request(config.http_client, method: :post, url: url, headers: headers, body: body)
 
     handle_response(response)
