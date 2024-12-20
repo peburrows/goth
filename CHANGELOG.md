@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.4.5 (2024-12-20)
+
+  * Support workload identity scopes
+
 ## v1.4.4 (2024-12-20)
 
   * Support workload identity

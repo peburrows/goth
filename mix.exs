@@ -1,7 +1,7 @@
 defmodule Goth.Mixfile do
   use Mix.Project
 
-  @version "1.4.4"
+  @version "1.4.5"
   @source_url "https://github.com/peburrows/goth"
 
   def project do
