@@ -38,6 +38,8 @@ defmodule Goth.Token do
 
         * `{:refresh_token, credentials}` - for fetching token using refresh token
 
+        * `{:workload_identity, credentials}` - for fetching token using workload identity
+
         * `:metadata` - for fetching token using Google internal metadata service
 
       If `:source` is not set, Goth will:
@@ -117,6 +119,25 @@ defmodule Goth.Token do
 
     * `:url` - the URL of the authentication service, defaults to:
       `"https://www.googleapis.com/oauth2/v4/token"`
+
+  #### Workload identity - `{:workload_identity, credentials}`
+
+  The `credentials` is a map and can contain the following keys:
+
+    * `"token_url"`
+
+    * `"audience"`
+
+    * `"subject_token_type"`
+
+    * `"credential_source"` - information about how to retrieve the subject token, can contain the following keys:
+      * `"format"` - including a `"type"` of `"json"` or `"text"` and optionally `"subject_token_field_name"` if `"json"`
+
+      * `"file"` - file to read the subject token from
+
+      * `"url"` - url to fetch the subject token from
+    
+      * `"headers"` - any headers to pass to the url
 
   #### Google metadata server - `:metadata`
 
@@ -367,7 +388,7 @@ defmodule Goth.Token do
         "requested_token_type" => "urn:ietf:params:oauth:token-type:access_token",
         "scope" => "https://www.googleapis.com/auth/cloud-platform",
         "subject_token_type" => subject_token_type,
-        "subject_token" => subject_token_from_credential_source(credential_source)
+        "subject_token" => subject_token_from_credential_source(credential_source, config)
       })
 
     response = request(config.http_client, method: :post, url: token_url, headers: headers, body: body)
@@ -390,22 +411,26 @@ defmodule Goth.Token do
     {url, audience}
   end
 
-  defp subject_token_from_credential_source(%{"file" => file, "format" => format}) do
-    binary = File.read!(file)
-
-    case format do
-      %{"type" => "text"} ->
-        binary
-
-      %{"type" => "json", "subject_token_field_name" => field} ->
-        binary |> Jason.decode!() |> Map.fetch!(field)
+  defp subject_token_from_credential_source(%{"url" => url, "headers" => headers, "format" => format}, config) do
+    with {:ok, %{status: 200, body: body}} <-
+           request(config.http_client, method: :get, url: url, headers: Enum.to_list(headers), body: "") do
+      subject_token_from_binary(body, format)
     end
   end
 
+  defp subject_token_from_credential_source(%{"file" => file, "format" => format}, _config) do
+    File.read!(file) |> subject_token_from_binary(format)
+  end
+
   # the default file type if not specified is "text"
-  defp subject_token_from_credential_source(%{"file" => file}) do
+  defp subject_token_from_credential_source(%{"file" => file}, _config) do
     File.read!(file)
   end
+
+  defp subject_token_from_binary(binary, %{"type" => "text"}), do: binary
+
+  defp subject_token_from_binary(binary, %{"type" => "json", "subject_token_field_name" => field}),
+    do: binary |> Jason.decode!() |> Map.fetch!(field)
 
   defp handle_jwt_response({:ok, %{status: 200, body: body}}) do
     {:ok, build_token(%{"id_token" => body})}
