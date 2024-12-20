@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.4.4 (2024-12-20)
+
+  * Support workload identity
+
 ## v1.4.3 (2024-01-15)
 
   * Update Finch to 0.17

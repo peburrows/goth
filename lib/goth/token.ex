@@ -136,7 +136,7 @@ defmodule Goth.Token do
       * `"file"` - file to read the subject token from
 
       * `"url"` - url to fetch the subject token from
-    
+
       * `"headers"` - any headers to pass to the url
 
   #### Google metadata server - `:metadata`
