@@ -17,7 +17,7 @@ jobs:
         include:
           - pair:
               elixir: 1.13.4
-              otp: 23.3
+              otp: 24.3
           - pair:
               elixir: 1.17.2
               otp: 27.0
