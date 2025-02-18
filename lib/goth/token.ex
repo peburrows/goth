@@ -122,6 +122,10 @@ defmodule Goth.Token do
 
   #### Workload identity - `{:workload_identity, credentials}`
 
+  Same as `{:workload_identity, credentials, []}`
+
+  #### Workload identity - `{:workload_identity, credentials, options}`
+
   The `credentials` is a map and can contain the following keys:
 
     * `"token_url"`
@@ -139,6 +143,10 @@ defmodule Goth.Token do
 
       * `"headers"` - any headers to pass to the url
 
+  The `options` is a keywords list and can contain the following keys:
+
+    * `:scopes` - the list of token scopes, defaults to `#{inspect(@default_scopes)}`
+
   #### Google metadata server - `:metadata`
 
   Same as `{:metadata, []}`
@@ -153,6 +161,12 @@ defmodule Goth.Token do
 
     * `:audience` - the audience you want an identity token for, default to `nil`
       If this parameter is provided, an identity token is returned instead of an access token
+
+  ## A note about Workload Identity Federation
+
+  Some external identity providers may require custom support to function correctly. Aside from
+  the default `"file"` and `"url"` support, Goth currently includes support for AWS
+  via `Goth.AWS`.
 
   ## Custom HTTP Client
 
@@ -386,19 +400,30 @@ defmodule Goth.Token do
 
     headers = [{"Content-Type", "application/x-www-form-urlencoded"}]
 
+    scope =
+      options
+      |> Keyword.get(:scopes, @default_scopes)
+      |> Enum.join(" ")
+
     body =
       URI.encode_query(%{
         "audience" => audience,
         "grant_type" => "urn:ietf:params:oauth:grant-type:token-exchange",
         "requested_token_type" => "urn:ietf:params:oauth:token-type:access_token",
-        "scope" => List.first(@default_scopes),
+        "scope" => scope,
         "subject_token_type" => subject_token_type,
-        "subject_token" => subject_token_from_credential_source(credential_source, config)
+        "subject_token" => subject_token_from_credential_source(credential_source, audience, config)
       })
 
     response = request(config.http_client, method: :post, url: token_url, headers: headers, body: body)
 
-    handle_workload_identity_response(response, config)
+    case handle_workload_identity_response(response, config) do
+      {:ok, token} ->
+        {:ok, %{token | scope: scope}}
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   defp metadata_options(options) do
@@ -416,19 +441,38 @@ defmodule Goth.Token do
     {url, audience}
   end
 
-  defp subject_token_from_credential_source(%{"url" => url, "headers" => headers, "format" => format}, config) do
+  defp subject_token_from_credential_source(
+         %{"url" => url, "headers" => headers, "format" => format},
+         _audience,
+         config
+       ) do
     with {:ok, %{status: 200, body: body}} <-
            request(config.http_client, method: :get, url: url, headers: Enum.to_list(headers), body: "") do
       subject_token_from_binary(body, format)
     end
   end
 
-  defp subject_token_from_credential_source(%{"file" => file, "format" => format}, _config) do
+  defp subject_token_from_credential_source(
+         %{
+           "url" => url,
+           "environment_id" => "aws1",
+           "region_url" => region_url,
+           "regional_cred_verification_url" => regional_cred_url_template
+         },
+         audience,
+         config
+       ) do
+    with {:ok, token} <- Goth.AWS.aws_iam_subject_token(url, region_url, regional_cred_url_template, audience, config) do
+      token
+    end
+  end
+
+  defp subject_token_from_credential_source(%{"file" => file, "format" => format}, _audience, _config) do
     File.read!(file) |> subject_token_from_binary(format)
   end
 
   # the default file type if not specified is "text"
-  defp subject_token_from_credential_source(%{"file" => file}, _config) do
+  defp subject_token_from_credential_source(%{"file" => file}, _audience, _config) do
     File.read!(file)
   end
 

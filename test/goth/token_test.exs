@@ -1,23 +1,24 @@
 defmodule Goth.TokenTest do
   use ExUnit.Case, async: true
 
+  @default_scope "https://www.googleapis.com/auth/cloud-platform"
+
   test "fetch/1 with service account" do
     bypass = Bypass.open()
-    default_scope = "https://www.googleapis.com/auth/cloud-platform"
 
     Bypass.expect(bypass, fn conn ->
       assert %{
                "grant_type" => "urn:ietf:params:oauth:grant-type:jwt-bearer",
                "assertion" => assertion
-             } = featch_request_body(conn)
+             } = fetch_request_body(conn)
 
       assert %{
                "aud" => "https://www.googleapis.com/oauth2/v4/token",
                "iss" => "alice@example.com",
-               "scope" => ^default_scope
+               "scope" => @default_scope
              } = jwt_decode(assertion)
 
-      body = ~s|{"access_token":"dummy","scope":"#{default_scope}","expires_in":3599,"token_type":"Bearer"}|
+      body = ~s|{"access_token":"dummy","scope":"#{@default_scope}","expires_in":3599,"token_type":"Bearer"}|
 
       Plug.Conn.resp(conn, 200, body)
     end)
@@ -28,39 +29,38 @@ defmodule Goth.TokenTest do
 
     {:ok, token} = Goth.Token.fetch(config)
     assert token.token == "dummy"
-    assert token.scope == default_scope
+    assert token.scope == @default_scope
     assert token.sub == nil
   end
 
   test "fetch/1 with service account and impersonating user" do
     bypass = Bypass.open()
-    default_scope = "https://www.googleapis.com/auth/cloud-platform"
 
     Bypass.expect(bypass, fn conn ->
       assert %{
                "grant_type" => "urn:ietf:params:oauth:grant-type:jwt-bearer",
                "assertion" => assertion
-             } = featch_request_body(conn)
+             } = fetch_request_body(conn)
 
       assert %{
                "iss" => "alice@example.com",
-               "scope" => ^default_scope,
+               "scope" => @default_scope,
                "sub" => "bob@example.com"
              } = jwt_decode(assertion)
 
-      body = ~s|{"access_token":"dummy","scope":"#{default_scope}","expires_in":3599,"token_type":"Bearer"}|
+      body = ~s|{"access_token":"dummy","scope":"#{@default_scope}","expires_in":3599,"token_type":"Bearer"}|
 
       Plug.Conn.resp(conn, 200, body)
     end)
 
     creds = random_service_account_credentials()
     bypass_url = "http://localhost:#{bypass.port}"
-    claims = %{"sub" => "bob@example.com", "scope" => default_scope}
+    claims = %{"sub" => "bob@example.com", "scope" => @default_scope}
     service_account_source = {:service_account, creds, url: bypass_url, claims: claims}
 
     {:ok, token} = Goth.Token.fetch(%{source: service_account_source})
     assert token.token == "dummy"
-    assert token.scope == default_scope
+    assert token.scope == @default_scope
     assert token.sub == "bob@example.com"
   end
 
@@ -71,7 +71,7 @@ defmodule Goth.TokenTest do
       assert %{
                "grant_type" => "urn:ietf:params:oauth:grant-type:jwt-bearer",
                "assertion" => assertion
-             } = featch_request_body(conn)
+             } = fetch_request_body(conn)
 
       assert %{"scope" => "aaa bbb"} = jwt_decode(assertion)
 
@@ -225,7 +225,49 @@ defmodule Goth.TokenTest do
 
     {:ok, token} = Goth.Token.fetch(config)
     assert token.token == "dummy_sa"
-    assert token.scope == nil
+    assert token.scope == @default_scope
+  end
+
+  test "fetch/1 from workload identity and multiple scopes" do
+    token_bypass = Bypass.open()
+    sa_token_bypass = Bypass.open()
+
+    Bypass.expect(token_bypass, fn conn ->
+      assert conn.request_path == "/v1/token"
+
+      assert %{
+               "grant_type" => "urn:ietf:params:oauth:grant-type:token-exchange",
+               "scope" => "aaa bbb"
+             } = fetch_request_body(conn)
+
+      body = ~s|{"access_token":"dummy","expires_in":3599,"token_type":"Bearer"}|
+      Plug.Conn.resp(conn, 200, body)
+    end)
+
+    Bypass.expect(sa_token_bypass, fn conn ->
+      assert conn.request_path ==
+               "/v1/projects/-/serviceAccounts/test-credentials-workload-identity@my-project.iam.gserviceaccount.com:generateAccessToken"
+
+      body = ~s|{"accessToken":"dummy_sa","expireTime":"2024-06-30T00:00:00Z"}|
+      Plug.Conn.resp(conn, 200, body)
+    end)
+
+    credentials =
+      File.read!("test/data/test-credentials-workload-identity.json")
+      |> Jason.decode!()
+      |> Map.put("token_url", "http://localhost:#{token_bypass.port}/v1/token")
+      |> Map.put(
+        "service_account_impersonation_url",
+        "http://localhost:#{sa_token_bypass.port}/v1/projects/-/serviceAccounts/test-credentials-workload-identity@my-project.iam.gserviceaccount.com:generateAccessToken"
+      )
+
+    config = %{
+      source: {:workload_identity, credentials, scopes: ["aaa", "bbb"]}
+    }
+
+    {:ok, token} = Goth.Token.fetch(config)
+    assert token.token == "dummy_sa"
+    assert token.scope == "aaa bbb"
   end
 
   test "fetch/1 from direct workload identity" do
@@ -249,7 +291,7 @@ defmodule Goth.TokenTest do
 
     {:ok, token} = Goth.Token.fetch(config)
     assert token.token == "dummy"
-    assert token.scope == nil
+    assert token.scope == @default_scope
   end
 
   test "fetch/1 from direct workload identity, json format" do
@@ -273,7 +315,7 @@ defmodule Goth.TokenTest do
 
     {:ok, token} = Goth.Token.fetch(config)
     assert token.token == "dummy"
-    assert token.scope == nil
+    assert token.scope == @default_scope
   end
 
   test "fetch/1 from url-based workload identity" do
@@ -308,7 +350,112 @@ defmodule Goth.TokenTest do
 
     {:ok, token} = Goth.Token.fetch(config)
     assert token.token == "dummy"
-    assert token.scope == nil
+    assert token.scope == @default_scope
+  end
+
+  test "fetch/1 with AWS workload identity" do
+    access_key_id = "ASIAXXXXXXXXXXXXXXXXXX"
+    secret_access_key = "oXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+    token = "oXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+
+    metadata_region_bypass = Bypass.open()
+    metadata_credentials_bypass = Bypass.open()
+    sts_bypass = Bypass.open()
+    token_bypass = Bypass.open()
+
+    Bypass.expect(metadata_region_bypass, fn conn ->
+      assert conn.request_path == "/latest/meta-data/placement/availability-zone"
+      Plug.Conn.resp(conn, 200, "us-east-1a")
+    end)
+
+    Bypass.expect(metadata_credentials_bypass, fn conn ->
+      assert conn.request_path == "/latest/meta-data/iam/security-credentials/"
+      Plug.Conn.resp(conn, 200, "test-role")
+    end)
+
+    Bypass.expect(metadata_credentials_bypass, "GET", "/latest/meta-data/iam/security-credentials/test-role", fn conn ->
+      body = ~s|
+      {
+        "Code": "Success",
+        "LastUpdated": "2023-10-26T21:31:48Z",
+        "Type": "AWS-HMAC",
+        "AccessKeyId": "#{access_key_id}",
+        "SecretAccessKey": "#{secret_access_key}",
+        "Token": "#{token}",
+        "Expiration": "2023-10-27T00:01:01Z"
+      }
+      |
+      Plug.Conn.resp(conn, 200, body)
+    end)
+
+    Bypass.expect(token_bypass, fn conn ->
+      assert conn.request_path == "/v1/token"
+
+      req_body = conn |> Plug.Conn.read_body() |> elem(1)
+      params = URI.decode_query(req_body)
+      subject_token = params["subject_token"]
+      audience = params["audience"]
+
+      aws_conf =
+        ExAws.Config.new(:sts,
+          access_key_id: access_key_id,
+          secret_access_key: secret_access_key,
+          security_token: token,
+          region: "us-east-1"
+        )
+
+      regional_cred_verification_url =
+        "http://localhost:#{sts_bypass.port}/?Action=GetCallerIdentity&Version=2011-06-15"
+
+      {:ok, expected_headers} =
+        ExAws.Auth.headers(
+          :post,
+          regional_cred_verification_url,
+          :sts,
+          aws_conf,
+          [{"x-goog-cloud-target-resource", audience}],
+          ""
+        )
+
+      decoded_request = URI.decode(subject_token) |> Jason.decode!()
+      request_headers = for %{"key" => k, "value" => v} <- decoded_request["headers"], into: %{}, do: {k, v}
+
+      Enum.each(expected_headers, fn {key, value} ->
+        assert Map.get(request_headers, key) == value
+      end)
+
+      body = ~s|{"access_token":"dummy","expires_in":3599,"token_type":"Bearer"}|
+
+      Plug.Conn.resp(conn, 200, body)
+    end)
+
+    credentials =
+      File.read!("test/data/test-credentials-aws-workload-identity.json")
+      |> Jason.decode!()
+      |> Map.put("token_url", "http://localhost:#{token_bypass.port}/v1/token")
+      |> Map.update!("credential_source", fn source ->
+        source
+        |> Map.put(
+          "region_url",
+          "http://localhost:#{metadata_region_bypass.port}/latest/meta-data/placement/availability-zone"
+        )
+        |> Map.put(
+          "url",
+          "http://localhost:#{metadata_credentials_bypass.port}/latest/meta-data/iam/security-credentials"
+        )
+        |> Map.put(
+          "regional_cred_verification_url",
+          "http://localhost:#{sts_bypass.port}/?Action=GetCallerIdentity&Version=2011-06-15"
+        )
+      end)
+
+    config = %{
+      source: {:workload_identity, credentials}
+    }
+
+    {:ok, token} = Goth.Token.fetch(config)
+    assert token.token == "dummy"
+    assert token.scope == @default_scope
   end
 
   defp random_service_account_credentials do
@@ -325,7 +472,7 @@ defmodule Goth.TokenTest do
     :public_key.pem_encode([:public_key.pem_entry_encode(:RSAPrivateKey, private_key)])
   end
 
-  defp featch_request_body(%Plug.Conn{} = conn) do
+  defp fetch_request_body(%Plug.Conn{} = conn) do
     assert {:ok, req_body, _} = Plug.Conn.read_body(conn)
     URI.decode_query(req_body)
   end
