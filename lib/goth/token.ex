@@ -201,10 +201,11 @@ defmodule Goth.Token do
       ...> Goth.Token.fetch(source: {:service_account, credentials, [claims: claims]})
       {:ok, %Goth.Token{...}}
 
-  #### Generate an impersonated token using a service account credentials file:
+  #### Generate an impersonated token using a service account credentials file.
+  #### Note that any top level `scopes` option will be ignored, you must specify your required `scope`, singular, not plural, as part of the claim and it must be a space separated string:
 
       iex> credentials = "credentials.json" |> File.read!() |> Jason.decode!()
-      ...> claims = %{"sub" => "<IMPERSONATED_ACCOUNT_EMAIL>"}
+      ...> claims = %{"sub" => "<IMPERSONATED_ACCOUNT_EMAIL>", "scope" => "https://scope1 https://scope2"}
       ...> Goth.Token.fetch(source: {:service_account, credentials, [claims: claims]})
       {:ok, %Goth.Token{...}}
 
