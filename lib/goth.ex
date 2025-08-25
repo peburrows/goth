@@ -104,6 +104,7 @@ defmodule Goth do
       |> Keyword.put_new(:http_client, {:finch, []})
       |> Keyword.put_new(:source, {:default, []})
       |> Keyword.put_new(:retry_delay, &exp_backoff/1)
+      |> Keyword.put_new(:handle_retry_callback, &handle_retry_callback/2)
 
     name = Keyword.fetch!(opts, :name)
     GenServer.start_link(__MODULE__, opts, name: registry_name(name))
@@ -151,6 +152,7 @@ defmodule Goth do
     :name,
     :source,
     :retry_delay,
+    :handle_retry_callback,
     :http_client,
     :retry_after,
     :refresh_before,
@@ -250,7 +252,9 @@ defmodule Goth do
     raise "too many failed attempts to refresh, last error: #{inspect(exception)}"
   end
 
-  defp handle_retry(_, state) do
+  defp handle_retry(exception, state) do
+    state.handle_retry_callback.(exception, state)
+
     state = %{state | retries: state.retries + 1}
     time_in_milliseconds = state.retry_delay.(state.retries)
     Process.send_after(self(), :refresh, time_in_milliseconds)
@@ -275,6 +279,8 @@ defmodule Goth do
   defp exp_backoff(retry_count) do
     min(30, round(:math.pow(2, retry_count))) * 1000
   end
+
+  defp handle_retry_callback(_exception, _state), do: :ok
 
   defp put(name, token) do
     Registry.update_value(@registry, name, fn _ -> token end)
