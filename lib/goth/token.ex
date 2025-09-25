@@ -101,6 +101,11 @@ defmodule Goth.Token do
     * `:claims` - self-signed JWT extra claims. Should be a map with string keys only.
       A self-signed JWT will be [exchanged for a Google-signed ID token](https://cloud.google.com/functions/docs/securing/authenticating#exchanging_a_self-signed_jwt_for_a_google-signed_id_token)
 
+    * `:impersonate_service_account` - the email of the service account to impersonate
+
+    * `:iam_url` - the base URL of the IAM credentials service, defaults to:
+      `"https://iamcredentials.googleapis.com"` (used only when `:impersonate_service_account` is set)
+
   #### Refresh token - `{:refresh_token, credentials}`
 
   Same as `{:refresh_token, credentials, []}`
@@ -201,11 +206,18 @@ defmodule Goth.Token do
       ...> Goth.Token.fetch(source: {:service_account, credentials, [claims: claims]})
       {:ok, %Goth.Token{...}}
 
-  #### Generate an impersonated token using a service account credentials file:
+  #### Generate an impersonated token using a service account credentials file via claims:
 
       iex> credentials = "credentials.json" |> File.read!() |> Jason.decode!()
       ...> claims = %{"sub" => "<IMPERSONATED_ACCOUNT_EMAIL>"}
       ...> Goth.Token.fetch(source: {:service_account, credentials, [claims: claims]})
+      {:ok, %Goth.Token{...}}
+
+
+  #### Generate an impersonated token using a service account credentials file via [`projects.serviceAccounts.generateAccessToken`](https://cloud.google.com/iam/docs/reference/credentials/rest/v1/projects.serviceAccounts/generateAccessToken):
+
+      iex> credentials = "credentials.json" |> File.read!() |> Jason.decode!()
+      ...> Goth.Token.fetch(source: {:service_account, credentials, [impersonate_service_account: "<IMPERSONATED_ACCOUNT_EMAIL>"]})
       {:ok, %Goth.Token{...}}
 
   #### Retrieve the token using a refresh token:
@@ -303,7 +315,8 @@ defmodule Goth.Token do
   defp request(%{source: {:service_account, credentials, options}} = config)
        when is_map(credentials) and is_list(options) do
     url = Keyword.get(options, :url, @default_url)
-
+    impersonate_service_account = Keyword.get(options, :impersonate_service_account)
+    iam_url = Keyword.get(options, :iam_url, "https://iamcredentials.googleapis.com")
     claims =
       Keyword.get_lazy(options, :claims, fn ->
         scope = options |> Keyword.get(:scopes, @default_scopes) |> Enum.join(" ")
@@ -315,13 +328,26 @@ defmodule Goth.Token do
 
     jwt = jwt_encode(claims, credentials)
 
-    headers = [{"content-type", "application/x-www-form-urlencoded"}]
-    grant_type = "urn:ietf:params:oauth:grant-type:jwt-bearer"
-    body = "grant_type=#{grant_type}&assertion=#{jwt}"
+    if impersonate_service_account do
+     # handle SA impersonation
+      caller_headers = [{"content-type", "application/x-www-form-urlencoded"}]
+      caller_grant_type = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+      caller_body = "grant_type=#{caller_grant_type}&assertion=#{jwt}"
+      with {:ok, %{token: token}} <- request(config.http_client, method: :post, url: url, headers: caller_headers, body: caller_body) |> handle_response() do
+        headers = [{"content-type", "application/json"}, {"Authorization", "Bearer #{token}"}]
+        body = Jason.encode!(%{scope: String.split(claims["scope"], " ")})
+        impersonation_url = "#{iam_url}/v1/projects/-/serviceAccounts/#{impersonate_service_account}:generateAccessToken"
+        request(config.http_client, method: :post, url: impersonation_url, headers: headers, body: body)
+      end
+    else
+      headers = [{"content-type", "application/x-www-form-urlencoded"}]
+      grant_type = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+      body = "grant_type=#{grant_type}&assertion=#{jwt}"
 
-    response = request(config.http_client, method: :post, url: url, headers: headers, body: body)
-
-    case handle_response(response) do
+      request(config.http_client, method: :post, url: url, headers: headers, body: body)
+    end
+    |> handle_response()
+    |> case do
       {:ok, token} ->
         sub = Map.get(claims, "sub", token.sub)
         scope = Map.get(claims, "scope", token.scope)

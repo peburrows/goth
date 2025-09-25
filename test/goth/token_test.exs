@@ -32,7 +32,7 @@ defmodule Goth.TokenTest do
     assert token.sub == nil
   end
 
-  test "fetch/1 with service account and impersonating user" do
+  test "fetch/1 with service account and impersonating user via claims" do
     bypass = Bypass.open()
     default_scope = "https://www.googleapis.com/auth/cloud-platform"
 
@@ -62,6 +62,39 @@ defmodule Goth.TokenTest do
     assert token.token == "dummy"
     assert token.scope == default_scope
     assert token.sub == "bob@example.com"
+  end
+
+
+  test "fetch/1 with service account and impersonating service account" do
+    oauth_bypass = Bypass.open()
+    iam_bypass = Bypass.open()
+    scope = "https://www.googleapis.com/auth/cloud-platform"
+    target = "target@example.com"
+
+    Bypass.expect(oauth_bypass, fn conn ->
+      assert %{"grant_type" => "urn:ietf:params:oauth:grant-type:jwt-bearer", "assertion" => assertion} = featch_request_body(conn)
+      assert %{"iss" => "alice@example.com", "scope" => ^scope} = jwt_decode(assertion)
+      Plug.Conn.resp(conn, 200, ~s|{"access_token":"caller_token","scope":"#{scope}","expires_in":3599,"token_type":"Bearer"}|)
+    end)
+
+    Bypass.expect(iam_bypass, fn conn ->
+      assert conn.request_path == "/v1/projects/-/serviceAccounts/#{target}:generateAccessToken"
+      assert {"authorization", "Bearer caller_token"} in conn.req_headers
+      assert {:ok, req_body, _} = Plug.Conn.read_body(conn)
+      assert %{"scope" => [^scope]} = Jason.decode!(req_body)
+      Plug.Conn.resp(conn, 200, ~s|{"accessToken":"impersonated_token","expireTime":"2024-06-30T00:00:00Z"}|)
+    end)
+
+    config = %{
+      source: {:service_account, random_service_account_credentials(),
+               url: "http://localhost:#{oauth_bypass.port}",
+               iam_url: "http://localhost:#{iam_bypass.port}",
+               impersonate_service_account: target}
+    }
+
+    {:ok, token} = Goth.Token.fetch(config)
+    assert token.token == "impersonated_token"
+    assert token.scope == scope
   end
 
   test "fetch/1 with service account and multiple scopes" do
