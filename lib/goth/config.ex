@@ -305,7 +305,16 @@ defmodule Goth.Config do
   end
 
   defp set_token_source(%{"type" => "external_account"} = map) do
-    Map.put(map, "token_source", :workload_identity)
+    # Check if this is an AWS workload identity configuration
+    is_aws = case map do
+      %{"subject_token_type" => "urn:x-oauth:params:oauth:token-type:aws"} -> true
+      %{"credential_source" => %{"regional_cred_verification_url" => _}} -> true
+      _ -> false
+    end
+    
+    map
+    |> Map.put("token_source", :workload_identity)
+    |> then(fn m -> if is_aws, do: Map.put(m, "provider", "aws"), else: m end)
   end
 
   defp set_token_source(list) when is_list(list) do

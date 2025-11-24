@@ -42,9 +42,13 @@ defmodule Goth.Mixfile do
       {:jose, "~> 1.11"},
       {:jason, "~> 1.1"},
       {:finch, "~> 0.17"},
+      {:ex_aws, "~> 2.1", optional: true},
+      {:ex_aws_sts, "~> 2.0", optional: true},
       {:bypass, "~> 2.1", only: :test},
+      {:mimic, "~> 2.1", only: :test},
+      {:hackney, "~> 1.9", only: :test},
       {:ex_doc, "~> 0.19", only: :dev},
-      {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false}
     ]
   end

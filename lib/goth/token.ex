@@ -386,6 +386,19 @@ defmodule Goth.Token do
 
     headers = [{"Content-Type", "application/x-www-form-urlencoded"}]
 
+    subject_token =
+      if is_aws_workload_identity?(credentials) do
+        case Goth.Token.ExAws.generate_subject_token(audience) do
+          {:ok, token} ->
+            token
+
+          {:error, reason} ->
+            raise "Failed to generate AWS subject token: #{reason}"
+        end
+      else
+        subject_token_from_credential_source(credential_source, config)
+      end
+
     body =
       URI.encode_query(%{
         "audience" => audience,
@@ -393,7 +406,7 @@ defmodule Goth.Token do
         "requested_token_type" => "urn:ietf:params:oauth:token-type:access_token",
         "scope" => List.first(@default_scopes),
         "subject_token_type" => subject_token_type,
-        "subject_token" => subject_token_from_credential_source(credential_source, config)
+        "subject_token" => subject_token
       })
 
     response = request(config.http_client, method: :post, url: token_url, headers: headers, body: body)
@@ -414,6 +427,14 @@ defmodule Goth.Token do
       end
 
     {url, audience}
+  end
+
+  defp is_aws_workload_identity?(credentials) do
+    case credentials do
+      %{"subject_token_type" => "urn:x-oauth:params:oauth:token-type:aws"} -> true
+      %{"credential_source" => %{"regional_cred_verification_url" => _}} -> true
+      _ -> false
+    end
   end
 
   defp subject_token_from_credential_source(%{"url" => url, "headers" => headers, "format" => format}, config) do

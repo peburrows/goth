@@ -1,5 +1,6 @@
 defmodule Goth.TokenTest do
   use ExUnit.Case, async: true
+  use Mimic
 
   test "fetch/1 with service account" do
     bypass = Bypass.open()
