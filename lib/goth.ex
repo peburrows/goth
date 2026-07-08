@@ -109,6 +109,18 @@ defmodule Goth do
     GenServer.start_link(__MODULE__, opts, name: registry_name(name))
   end
 
+  def start(opts) do
+    opts =
+      opts
+      |> Keyword.put_new(:refresh_before, @refresh_before_minutes * 60)
+      |> Keyword.put_new(:http_client, {:finch, []})
+      |> Keyword.put_new(:source, {:default, []})
+      |> Keyword.put_new(:retry_delay, &exp_backoff/1)
+
+    name = Keyword.fetch!(opts, :name)
+    GenServer.start(__MODULE__, opts, name: registry_name(name))
+  end
+
   def __finch__(options) do
     {method, options} = Keyword.pop!(options, :method)
     {url, options} = Keyword.pop!(options, :url)
@@ -246,8 +258,9 @@ defmodule Goth do
     end
   end
 
-  defp handle_retry(exception, %{retries: retries, max_retries: max_retries}) when retries >= max_retries - 1 do
-    raise "too many failed attempts to refresh, last error: #{inspect(exception)}"
+  defp handle_retry(exception, %{retries: retries, max_retries: max_retries} = state) when retries >= max_retries - 1 do
+    Logger.error("too many failed attempts to refresh, last error: #{inspect(exception)}")
+    {:stop, {:shutdown, exception}, %{state | retries: 0}}
   end
 
   defp handle_retry(_, state) do
