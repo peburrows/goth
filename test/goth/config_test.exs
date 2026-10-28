@@ -150,6 +150,71 @@ defmodule Goth.ConfigTest do
     Application.start(:goth)
   end
 
+  test "get_configuration_data returns nil for empty config file" do
+    import ExUnit.CaptureLog
+
+    path = Path.expand("test/data/home/gcloud/configurations/config_empty")
+
+    log =
+      capture_log(fn ->
+        assert Config.get_configuration_data(path) == nil
+      end)
+
+    assert log =~ "missing required [core] section"
+    assert log =~ "Run 'gcloud init' or delete this file"
+  end
+
+  test "get_configuration_data returns nil for config file missing [core] section" do
+    import ExUnit.CaptureLog
+
+    path = Path.expand("test/data/home/gcloud/configurations/config_no_core")
+
+    log =
+      capture_log(fn ->
+        assert Config.get_configuration_data(path) == nil
+      end)
+
+    assert log =~ "missing required [core] section"
+  end
+
+  for configuration_file <- ~w(config_empty config_no_core config_no_project config_no_account) do
+    @tag :capture_log
+    test "#{configuration_file} allows metadata fallback", %{bypass: bypass} do
+      Bypass.expect_once(bypass, "GET", "/computeMetadata/v1/project/project-id", fn conn ->
+        Plug.Conn.resp(conn, 200, "metadata-project")
+      end)
+
+      assert {:ok, %{default: config}} =
+               Config.init(
+                 config_root_dir: Path.expand("test/data/home/gcloud"),
+                 configuration_file: "configurations/#{unquote(configuration_file)}",
+                 credentials_file: "missing-credentials.json"
+               )
+
+      assert config["token_source"] == :metadata
+      assert config["project_id"] == "metadata-project"
+    end
+
+    @tag :capture_log
+    test "#{configuration_file} preserves application default credentials" do
+      assert {:ok, %{default: config}} =
+               Config.init(
+                 config_root_dir: Path.expand("test/data/home/gcloud"),
+                 configuration_file: "configurations/#{unquote(configuration_file)}",
+                 project_id: "configured-project"
+               )
+
+      credentials =
+        "test/data/home/gcloud/application_default_credentials.json"
+        |> File.read!()
+        |> Jason.decode!()
+
+      assert Map.take(config, Map.keys(credentials)) == credentials
+      assert config["token_source"] == :oauth_refresh
+      assert config["project_id"] == "configured-project"
+    end
+  end
+
   test "GOOGLE_APPLICATION_CREDENTIALS is read" do
     # The test configuration sets an example JSON blob. We override it briefly
     # during this test.

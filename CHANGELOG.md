@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.4.5-mo.1 (2026-10-28)
+
+  * Ignore empty or incomplete gcloud configuration files so application default
+    credentials and metadata fallback remain available.
+
 ## v1.4.5 (2024-12-20)
 
   * Support workload identity scopes

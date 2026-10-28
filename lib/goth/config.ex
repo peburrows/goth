@@ -235,8 +235,19 @@ defmodule Goth.Config do
     if File.regular?(configuration_file) do
       configuration_data = configuration_file |> File.read!() |> decode_ini()
 
-      # Only retrieve the required data.
-      %{"project_id" => configuration_data["core"]["project"], "actor_email" => configuration_data["core"]["account"]}
+      case configuration_data do
+        %{"core" => %{"project" => project, "account" => account}} ->
+          %{"project_id" => project, "actor_email" => account}
+
+        _ ->
+          Logger.warning(
+            "Gcloud configuration file #{configuration_file} is missing " <>
+              "required [core] section with project and account settings. " <>
+              "Run 'gcloud init' or delete this file to resolve."
+          )
+
+          nil
+      end
     else
       nil
     end
