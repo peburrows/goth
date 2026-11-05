@@ -16,10 +16,7 @@ defmodule Goth.Mixfile do
       description: description(),
       docs: docs(),
       deps: deps(),
-      aliases: aliases(),
-      preferred_cli_env: [
-        "test.all": :test
-      ]
+      aliases: aliases()
     ]
   end
 
@@ -28,6 +25,10 @@ defmodule Goth.Mixfile do
       mod: {Goth.Application, []},
       extra_applications: [:logger]
     ]
+  end
+
+  def cli do
+    [preferred_envs: ["test.all": :test]]
   end
 
   def aliases do
@@ -44,7 +45,7 @@ defmodule Goth.Mixfile do
       {:finch, "~> 0.17"},
       {:bypass, "~> 2.1", only: :test},
       {:ex_doc, "~> 0.19", only: :dev},
-      {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
+      {:credo, "~> 1.7.19", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false}
     ]
   end
