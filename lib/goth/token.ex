@@ -622,8 +622,6 @@ defmodule Goth.Token do
   def refresh!(%__MODULE__{account: account, scope: scope, sub: sub}),
     do: refresh!({account, scope}, sub)
 
-  def refresh!(%__MODULE__{account: account, scope: scope}), do: refresh!({account, scope})
-
   @doc false
   @spec refresh!({any(), any()}, any()) :: {:ok, t()}
   def refresh!({account, scope}, sub \\ nil), do: retrieve_and_store!({account, scope}, sub)
